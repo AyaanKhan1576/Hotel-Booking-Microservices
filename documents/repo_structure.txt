@@ -1,0 +1,50 @@
+hotel-booking-microservices/
+├── user-service/                      # Handles authentication, account management, favorites, and loyalty program
+│   ├── src/
+│   │   ├── controllers/               # Request handlers for user-related endpoints (registration, login, etc.)
+│   │   ├── models/                    # Data models and schemas for user information and loyalty tracking
+│   │   ├── routes/                    # API endpoints for user operations
+│   │   └── services/                  # Business logic for user management and authentication
+│   ├── tests/                         # Unit and integration tests for the user service
+│   ├── Dockerfile                     # Containerization instructions (if needed later)
+│   ├── package.json or pom.xml        # Project configuration (depending on technology)
+│   └── README.md                      # Service-specific documentation
+│
+├── booking-service/                   # Manages bookings, including individual and group reservations and dummy payment handling
+│   ├── src/
+│   │   ├── controllers/               # Endpoints for creating, updating, and canceling bookings
+│   │   ├── models/                    # Data models for booking records and group bookings
+│   │   ├── routes/                    # API endpoints for booking operations
+│   │   └── services/                  # Business logic for booking management and dummy payment processing
+│   ├── tests/                         # Unit and integration tests for booking functionalities
+│   ├── Dockerfile
+│   ├── package.json or pom.xml
+│   └── README.md
+│
+├── hotel-service/                     # Manages hotel listings, room details, search/filter functionalities, feedback, pricing, and reporting
+│   ├── src/
+│   │   ├── controllers/               # Endpoints for CRUD operations on hotels, rooms, and feedback submissions
+│   │   ├── models/                    # Data models for hotels, rooms, reviews, and pricing history
+│   │   ├── routes/                    # API endpoints for hotel and room operations, search, and reporting
+│   │   └── services/                  # Business logic for hotel management, search functionality, and reporting generation
+│   ├── tests/                         # Unit and integration tests for hotel and room operations
+│   ├── Dockerfile
+│   ├── package.json or pom.xml
+│   └── README.md
+│
+├── frontend/                          # Web client interfacing with all backend services for guests, travel agents, and hotel admins
+│   ├── public/                        # Static assets (HTML, CSS, images, etc.)
+│   ├── src/
+│   │   ├── components/                # Reusable UI components (e.g., search bars, booking forms)
+│   │   ├── pages/                     # Page-level components for different views (home, booking, admin dashboards)
+│   │   ├── services/                  # API integration code to interact with backend services
+│   │   └── styles/                    # CSS/SCSS files
+│   ├── tests/                         # Frontend unit and integration tests
+│   ├── Dockerfile
+│   ├── package.json or equivalent     # Project configuration
+│   └── README.md
+│
+└── shared/                            # Contains common libraries, utilities, or data models shared across services
+    ├── libraries/                     # Reusable code modules (e.g., authentication utilities)
+    ├── models/                        # Shared data structures or DTOs
+    └── README.md
