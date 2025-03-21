@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect('mongodb://localhost:27017/roomservice', {
+    await mongoose.connect('mongodb://localhost:27017/bookingservice', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('Room Service MongoDB connected');
+    console.log('Booking Service MongoDB connected');
   } catch (err) {
     console.error(err.message);
     process.exit(1);

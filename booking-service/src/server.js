@@ -2,7 +2,7 @@ const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const roomRoutes = require('./routes/roomRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 
 const app = express();
 
@@ -14,7 +14,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Routes
-app.use('/api/rooms', roomRoutes);
+app.use('/api/bookings', bookingRoutes);
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Room Service running on port ${PORT}`));
+const PORT = process.env.PORT || 5002;
+app.listen(PORT, () => console.log(`Booking Service running on port ${PORT}`));
