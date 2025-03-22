@@ -3,7 +3,7 @@ const router = express.Router();
 const Room = require('../models/Room');
 const Hotel = require('../models/Hotel');
 
-//adding a new room to the hotel
+// adding a new room to a hotel
 router.post('/', async (req, res) => {
     try {
         const room = new Room(req.body);
@@ -15,17 +15,42 @@ router.post('/', async (req, res) => {
     }
 });
 
-// display all rooms
+// displaying all rooms a s per the search and filter opt
 router.get('/', async (req, res) => {
     try {
-        const rooms = await Room.find().populate('hotel');
+        const { amenities, capacity, sortBy } = req.query;
+
+        const query = {};
+        //amenities filter
+        if (amenities) {
+            query.amenities = { $all: amenities.split(',') }; 
+        }
+        //capacity filter-> exactly equal to val -> $eq
+        if (capacity) {
+            query.capacity = { $eq: parseInt(capacity) }; 
+        }
+
+        const sortOptions = {};
+        //sort by low to high
+        if (sortBy === 'price_asc') {
+            sortOptions.price = 1; 
+        }
+        //sort by high to low
+        else if (sortBy === 'price_desc') {
+            sortOptions.price = -1; 
+        }
+
+        const rooms = await Room.find(query)
+            .populate('hotel')
+            .sort(sortOptions);
+
         res.json(rooms);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// update the sleected room desc
+// update the selected room description
 router.put('/:id', async (req, res) => {
     try {
         const updatedRoom = await Room.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -46,7 +71,7 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// display room by selected id
+// display room by selected ID
 router.get('/:id', async (req, res) => {
     try {
         const room = await Room.findById(req.params.id).populate('hotel');
@@ -58,5 +83,3 @@ router.get('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
-//findByIdAndUpdate-> builtin mongoose db func
