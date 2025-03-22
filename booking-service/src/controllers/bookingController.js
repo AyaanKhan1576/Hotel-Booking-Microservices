@@ -1,7 +1,8 @@
 const axios = require('axios');
 const Booking = require('../models/Booking');
 
-// Helper function to generate date strings (YYYY-MM-DD) from check-in (inclusive) to check-out (exclusive)
+// Helper: Generate an array of date strings (YYYY-MM-DD)
+// from check-in (inclusive) to check-out (exclusive)
 const getDatesBetween = (start, end) => {
   const dates = [];
   let current = new Date(start);
@@ -13,20 +14,30 @@ const getDatesBetween = (start, end) => {
   return dates;
 };
 
+// Simulated notification function
+const sendNotification = async (guestEmail, subject, message) => {
+  // In a real application, you might integrate with Nodemailer or Twilio here.
+  console.log(`Notification sent to ${guestEmail}:\nSubject: ${subject}\nMessage: ${message}`);
+  // For example, using nodemailer:
+  // const nodemailer = require('nodemailer');
+  // ... setup transporter and send mail
+};
+
+// Existing createBooking function remains as before...
 exports.createBooking = async (req, res) => {
   try {
     const { roomId, guestName, guestEmail, checkIn, checkOut, additionalServices } = req.body;
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
-
+    
     if (checkInDate >= checkOutDate) {
       return res.status(400).json({ msg: "Check-in date must be before check-out date." });
     }
 
-    // Generate the requested booking dates
+    // Generate the array of dates to be booked
     const bookingDates = getDatesBetween(checkIn, checkOut);
 
-    // Fetch room details from hotel-service
+    // Get room details from the hotel-service
     const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
     const roomResponse = await axios.get(`${roomServiceUrl}/api/rooms/${roomId}`);
     const room = roomResponse.data;
@@ -34,14 +45,14 @@ exports.createBooking = async (req, res) => {
       return res.status(404).json({ msg: "Room not found." });
     }
 
-    // Check if all requested booking dates are available
+    // Check if every booking date is available
     const availableDates = room.availableDates || [];
     const allDatesAvailable = bookingDates.every(date => availableDates.includes(date));
     if (!allDatesAvailable) {
       return res.status(400).json({ msg: "Some or all of the requested dates are not available for booking." });
     }
 
-    // Create the booking (simulate payment success by setting paymentStatus to 'Success')
+    // Create the booking (simulate payment by setting paymentStatus to 'Success')
     const bookingData = {
       roomId,
       guestName,
@@ -59,6 +70,9 @@ exports.createBooking = async (req, res) => {
     const updatedAvailableDates = availableDates.filter(date => !bookingDates.includes(date));
     await axios.put(`${roomServiceUrl}/api/rooms/${roomId}`, { availableDates: updatedAvailableDates });
 
+    // Send notification for booking confirmation
+    await sendNotification(guestEmail, "Booking Confirmed", "Your booking has been confirmed successfully.");
+
     res.status(201).json({ msg: "Booking confirmed", booking });
   } catch (err) {
     console.error(err);
@@ -66,6 +80,77 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+// New function: Get all bookings for a guest (booking history/upcoming)
+exports.getUserBookings = async (req, res) => {
+  try {
+    const { guestEmail } = req.query;
+    if (!guestEmail) {
+      return res.status(400).json({ msg: "guestEmail query parameter is required." });
+    }
+    const bookings = await Booking.find({ guestEmail });
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// New function: Update a booking
+exports.updateBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const updateData = req.body;
+    // Optionally, add logic to handle date changes:
+    // e.g., re-check availability, update room's availableDates accordingly
+    const booking = await Booking.findByIdAndUpdate(bookingId, updateData, { new: true });
+    if (!booking) return res.status(404).json({ msg: "Booking not found." });
+    
+    // Send notification about the update
+    await sendNotification(booking.guestEmail, "Booking Updated", "Your booking has been updated successfully.");
+    res.json({ msg: "Booking updated", booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// New function: Cancel a booking
+exports.cancelBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ msg: "Booking not found." });
+
+    // Get the room details for potential re-adding of available dates (if desired)
+    const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
+    const roomResponse = await axios.get(`${roomServiceUrl}/api/rooms/${booking.roomId}`);
+    const room = roomResponse.data;
+
+    // Generate the booked dates from the booking (same as when it was created)
+    const bookingDates = getDatesBetween(booking.checkIn, booking.checkOut);
+
+    // Option: Update room availability by adding the cancelled dates back.
+    const updatedAvailableDates = [...room.availableDates, ...bookingDates];
+    // Optionally, sort dates if needed:
+    updatedAvailableDates.sort();
+
+    await axios.put(`${roomServiceUrl}/api/rooms/${booking.roomId}`, { availableDates: updatedAvailableDates });
+
+    // Mark the booking as cancelled (you could also delete it)
+    booking.paymentStatus = 'Cancelled';
+    await booking.save();
+
+    // Send cancellation notification
+    await sendNotification(booking.guestEmail, "Booking Cancelled", "Your booking has been cancelled.");
+
+    res.json({ msg: "Booking cancelled", booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// Existing function: Get booking by ID
 exports.getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -74,37 +159,5 @@ exports.getBookingById = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
-  }
-};
-
-exports.searchBookings = async (req, res) => {
-  try {
-    // Extract query parameters
-    const { guestName, startDate, endDate, roomId } = req.query;
-    const query = {};
-
-    // Filter by guest name (case-insensitive)
-    if (guestName) {
-      query.guestName = { $regex: guestName, $options: 'i' };
-    }
-
-    // Filter by booking date range (assumes checkIn and checkOut are stored as Date objects)
-    if (startDate && endDate) {
-      // Example: booking's checkIn is on or after startDate and checkOut is on or before endDate.
-      // You can adjust this logic depending on your needs.
-      query.checkIn = { $gte: new Date(startDate) };
-      query.checkOut = { $lte: new Date(endDate) };
-    }
-
-    // Filter by room identifier (if your bookings reference a roomId)
-    if (roomId) {
-      query.roomId = roomId;
-    }
-
-    const bookings = await Booking.find(query);
-    res.json(bookings);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
   }
 };
