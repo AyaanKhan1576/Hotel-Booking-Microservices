@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
 
-// GET route for searching bookings
-router.get('/search', bookingController.searchBookings);
+// Ensure the search route is defined before the parameterized route (if you have one)
+router.get('/search', bookingController.getUserBookings);
 
-// POST route for creating a booking
+// POST route to create a new booking
 router.post('/', bookingController.createBooking);
 
-// GET route for retrieving a booking by ID
+// GET, PUT, DELETE routes using /:id
 router.get('/:id', bookingController.getBookingById);
-
+router.put('/:id', bookingController.updateBooking);
+router.delete('/:id', bookingController.cancelBooking);
 
 module.exports = router;

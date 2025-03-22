@@ -1,20 +1,19 @@
+require('dotenv').config();
 const express = require('express');
-const connectDB = require('./config/db');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const bookingRoutes = require('./routes/bookingRoutes');
+const mongoose = require('mongoose');
 
 const app = express();
-
-// Connect to MongoDB
-connectDB();
-
-// Middleware
+app.use(express.json());
 app.use(cors());
-app.use(bodyParser.json());
 
-// Routes
+const bookingRoutes = require('./routes/bookingRoutes');
 app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`Booking Service running on port ${PORT}`));
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("Booking Service MongoDB connected");
+    app.listen(PORT, () => console.log(`Booking Service running on port ${PORT}`));
+  })
+  .catch(err => console.error(err));
