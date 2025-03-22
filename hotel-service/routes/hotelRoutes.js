@@ -14,11 +14,16 @@ router.post('/', async (req, res) => {
     }
 });
 
-// display all hotels 
+// display all hotels as per locatioin filter
 router.get('/', async (req, res) => {
     try {
         const { page = 1, limit = 10, sort, location } = req.query;
-        const query = location ? { location: new RegExp(location, 'i') } : {};
+
+        const query = {};
+        //search by location-. case insensitive
+        if (location) {
+            query.location = { $regex: new RegExp(location, 'i') }; 
+        }
 
         const hotels = await Hotel.find(query)
             .limit(limit * 1)
@@ -69,5 +74,6 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 module.exports = router;
