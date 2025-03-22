@@ -1,0 +1,13 @@
+body {
+  background-color: #a9ccef;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.table-actions {
+  white-space: nowrap;
+}
