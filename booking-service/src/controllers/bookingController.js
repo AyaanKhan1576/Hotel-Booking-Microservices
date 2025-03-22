@@ -76,3 +76,35 @@ exports.getBookingById = async (req, res) => {
     res.status(500).json({ error: 'Server Error' });
   }
 };
+
+exports.searchBookings = async (req, res) => {
+  try {
+    // Extract query parameters
+    const { guestName, startDate, endDate, roomId } = req.query;
+    const query = {};
+
+    // Filter by guest name (case-insensitive)
+    if (guestName) {
+      query.guestName = { $regex: guestName, $options: 'i' };
+    }
+
+    // Filter by booking date range (assumes checkIn and checkOut are stored as Date objects)
+    if (startDate && endDate) {
+      // Example: booking's checkIn is on or after startDate and checkOut is on or before endDate.
+      // You can adjust this logic depending on your needs.
+      query.checkIn = { $gte: new Date(startDate) };
+      query.checkOut = { $lte: new Date(endDate) };
+    }
+
+    // Filter by room identifier (if your bookings reference a roomId)
+    if (roomId) {
+      query.roomId = roomId;
+    }
+
+    const bookings = await Booking.find(query);
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
