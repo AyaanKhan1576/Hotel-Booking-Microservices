@@ -13,4 +13,8 @@ router.get('/:id', bookingController.getBookingById);
 router.put('/:id', bookingController.updateBooking);
 router.delete('/:id', bookingController.cancelBooking);
 
+// Add route for processing payment (dummy simulation with logging)
+router.patch('/:id/payment', bookingController.processPayment);
+
+
 module.exports = router;

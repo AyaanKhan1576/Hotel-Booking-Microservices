@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 const Room = require('../models/Room');
 const Hotel = require('../models/Hotel');
+const PriceChangeLog = require('../models/PriceChangeLog');
+
 
 // Add a new room to a hotel
 router.post('/', async (req, res) => {
@@ -68,5 +70,36 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Adjust price for a specific room
+router.patch('/:id/price', async (req, res) => {
+  try {
+    const { newPrice } = req.body;
+    if (typeof newPrice !== 'number' || newPrice < 0) {
+      return res.status(400).json({ error: 'Invalid newPrice value' });
+    }
+    
+    // Find the room by its id
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    
+    const oldPrice = room.price;
+    room.price = newPrice;
+    await room.save();
+    
+    // Log the price change
+    const priceLog = await PriceChangeLog.create({
+      room: room._id,
+      oldPrice: oldPrice,
+      newPrice: newPrice,
+      changedBy: req.user ? req.user.email : "Admin"  // If you have auth middleware, you can set req.user; otherwise, use a default value.
+    });
+    
+    res.json({ message: "Price updated successfully", room, priceLog });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 module.exports = router;
