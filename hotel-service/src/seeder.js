@@ -32,7 +32,14 @@ const seedData = async () => {
       contactInfo: "123-456-7890",
       rooms: []
     });
+    const hotel2 = new Hotel({
+      name: "Tipton Hotel",
+      location: "New York",
+      contactInfo: "321-654-987",
+      rooms: []
+    });
     await hotel.save();
+    await hotel2.save();
 
     // Create dummy rooms with availableDates (for example, available throughout June 2025)
     const availableDates = generateDates("2025-06-01", "2025-07-01");
@@ -57,12 +64,27 @@ const seedData = async () => {
       availableDates: availableDates
     });
 
+    const room3 = new Room({
+      roomno: "105",
+      type: "Deluxe",
+      capacity: 2,
+      price: 150,
+      amenities: ["WiFi", "TV", "Mini Bar"],
+      hotel: hotel2._id,
+      availableDates: availableDates
+    });
+
+
     await room1.save();
     await room2.save();
+    await room3.save();
 
     // Update hotel with room references
     hotel.rooms.push(room1._id, room2._id);
     await hotel.save();
+
+    hotel2.rooms.push(room3._id);
+    await hotel2.save();
 
     console.log("Dummy data seeded successfully!");
     process.exit();

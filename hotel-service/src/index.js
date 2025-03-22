@@ -6,6 +6,9 @@ const dotenv = require('dotenv');
 dotenv.config();
 const app = express();
 app.use(express.json());
+const cors = require('cors');
+app.use(cors());
+
 
 const hotelRoutes = require('./routes/hotelRoutes');
 const roomRoutes = require('./routes/roomRoutes');
