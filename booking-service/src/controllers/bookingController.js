@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Booking = require('../models/Booking');
+const PaymentLog = require('../models/PaymentLog');
 
 // Helper: Generate an array of date strings (YYYY-MM-DD)
 // from check-in (inclusive) to check-out (exclusive)
@@ -149,6 +150,43 @@ exports.cancelBooking = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+
+
+// New function: Process Payment (Dummy Payment Simulation with Logging)
+exports.processPayment = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    // Find the booking by its ID
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ msg: "Booking not found." });
+    
+    // Simulate payment processing by updating paymentStatus to "Success"
+    booking.paymentStatus = "Success";
+    await booking.save();
+    
+    // Log the payment transaction in PaymentLog
+    const paymentLog = await PaymentLog.create({
+      bookingId: booking._id,
+      transactionStatus: "Success",
+      details: "Dummy payment processed successfully."
+    });
+    
+    // Send a notification to the guest confirming payment (simulation)
+    await sendNotification(
+      booking.guestEmail,
+      "Payment Processed",
+      "Your payment has been successfully processed."
+    );
+    
+    res.json({ msg: "Payment processed successfully", booking, paymentLog });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+
 
 // Existing function: Get booking by ID
 exports.getBookingById = async (req, res) => {
