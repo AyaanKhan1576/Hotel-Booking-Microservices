@@ -1,0 +1,70 @@
+const axios = require('axios');
+const GroupBooking = require('../models/GroupBooking');
+const Booking = require('../models/Booking'); // reuse individual Booking model if needed
+
+// Helper: sum up room prices * nights
+const calculateTotal = async (rooms, discountRate) => {
+  let sum = 0;
+  for (const r of rooms) {
+    // fetch room price from hotel-service
+    const res = await axios.get(`${process.env.ROOM_SERVICE_URL}/api/rooms/${r.roomId}`);
+    const room = res.data;
+    const nights = (new Date(r.checkOut) - new Date(r.checkIn)) / (1000*60*60*24);
+    sum += room.price * nights;
+  }
+  // apply discount
+  return sum * (1 - discountRate/100);
+};
+
+// US05.1: Create a new group booking
+exports.createGroupBooking = async (req, res) => {
+  try {
+    const { agentEmail, rooms, discountRate } = req.body;
+    // check availability for each room (reuse your date-availability logic)...
+    // For brevity, assume rooms are available.
+
+    const totalPrice = await calculateTotal(rooms, discountRate);
+    const group = await GroupBooking.create({ agentEmail, rooms, discountRate, totalPrice });
+    res.status(201).json(group);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server Error' });
+  }
+};
+
+// US05.1: List group bookings for an agent
+exports.getAgentGroupBookings = async (req, res) => {
+  const { agentEmail } = req.query;
+  const groups = await GroupBooking.find({ agentEmail });
+  res.json(groups);
+};
+
+// US05.2: Update an individual room assignment within a group
+exports.updateRoomAssignment = async (req, res) => {
+  const { groupId, roomId } = req.params;
+  const update = req.body; // e.g. guestName, dates, status
+  const group = await GroupBooking.findById(groupId);
+  if (!group) return res.status(404).json({ msg: 'Group booking not found' });
+
+  const assignment = group.rooms.id(roomId);
+  if (!assignment) return res.status(404).json({ msg: 'Room assignment not found' });
+  Object.assign(assignment, update);
+
+  // Recalculate totalPrice if dates changed?
+  group.totalPrice = await calculateTotal(group.rooms, group.discountRate);
+  await group.save();
+  res.json(group);
+};
+
+// US05.3: Update group discount
+exports.updateDiscount = async (req, res) => {
+  const { groupId } = req.params;
+  const { discountRate } = req.body;
+  const group = await GroupBooking.findById(groupId);
+  if (!group) return res.status(404).json({ msg: 'Group booking not found' });
+
+  group.discountRate = discountRate;
+  group.totalPrice = await calculateTotal(group.rooms, discountRate);
+  await group.save();
+  res.json(group);
+};
