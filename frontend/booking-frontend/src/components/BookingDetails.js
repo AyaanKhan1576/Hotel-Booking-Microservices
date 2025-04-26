@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 
@@ -9,7 +9,7 @@ const BookingDetails = () => {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       const res = await API.get(`/bookings/${id}`);
       setBooking(res.data);
@@ -19,11 +19,11 @@ const BookingDetails = () => {
     } catch (err) {
       setMessage('Error fetching booking details');
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchBooking();
-  }, [id]);
+  }, [id, fetchBooking]);
 
   const handleUpdateChange = (e) => {
     const { name, value, type, checked } = e.target;
