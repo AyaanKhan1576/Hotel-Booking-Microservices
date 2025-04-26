@@ -6,9 +6,6 @@
 /node_modules
 /.pnp
 .pnp.js
-/public
-package-lock.json
-package.json
 
 
 # testing
