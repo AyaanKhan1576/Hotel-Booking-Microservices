@@ -13,6 +13,10 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'hotelManagement', 'travelAgent', 'admin'], 
     default: 'user' 
   },
+  favorites: [{
+    itemId: { type: Number, required: true },
+    type: { type: String, enum: ['hotel', 'room'], required: true }
+  }],
   createdAt: { type: Date, default: Date.now }
 });
 

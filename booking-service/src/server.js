@@ -11,7 +11,10 @@ const bookingRoutes = require('./routes/bookingRoutes');
 app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 5002;
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => {
     console.log("Booking Service MongoDB connected");
     app.listen(PORT, () => console.log(`Booking Service running on port ${PORT}`));
