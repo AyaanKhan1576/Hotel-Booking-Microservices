@@ -23,13 +23,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await authLogin(credentials);
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify({ userId: data.userId, role: data.role, name: data.name }));
-      setUser({ userId: data.userId, role: data.role, name: data.name });
+      localStorage.setItem('user', JSON.stringify({ userId: data.userId, role: data.role }));
+      setUser({ userId: data.userId, role: data.role });
       setIsAuthenticated(true);
       return data;
-    } catch (error) { 
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    } catch (error) {
       throw error;
     }
   };

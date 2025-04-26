@@ -29,37 +29,23 @@ if (missingVars.length > 0) {
 // 3. Initialize Express app
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: 'http://localhost:3001',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
 
-// Add explicit OPTIONS handler
-app.options('*', cors());
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(async () => {
+  console.log('MongoDB connected');
 
-// 4. Enhanced MongoDB connection with retry logic
-const connectWithRetry = async () => {
-  const mongoOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    maxPoolSize: 10
-  };
-
-  try {
-    await mongoose.connect(process.env.MONGO_URI, mongoOptions);
-    console.log('✅ MongoDB connected successfully');
-
-    // Initialize collections
-    const db = mongoose.connection.db;
-    const collections = await db.listCollections({ name: 'users' }).toArray();
-    
-    if (collections.length === 0) {
-      await db.createCollection('users');
-      console.log('🆕 Created users collection');
-    }
+  // Optionally create the 'users' collection if it doesn't exist
+  const db = mongoose.connection.db;
+  const collections = await db.listCollections({ name: 'users' }).toArray();
+  if (collections.length === 0) {
+    await db.createCollection('users');
+    console.log('Users collection created');
+  } else {
+    console.log('Users collection already exists');
+  }
 
     // Seed data if enabled
     if (process.env.SEED === 'true') {
@@ -93,22 +79,7 @@ const startServer = async () => {
   // Routes
   app.use('/api/users', userRoutes);
 
-  const PORT = process.env.PORT || 5001;
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🔗 MongoDB URI: ${process.env.MONGO_URI}`);
-  });
-
-  // Graceful shutdown
-  process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down gracefully...');
-    server.close(() => {
-      mongoose.connection.close(false, () => {
-        console.log('📦 MongoDB connection closed');
-        process.exit(0);
-      });
-    });
-  });
-};
-
-startServer();
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -1,5 +1,9 @@
 // seed.js
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({
+  path: path.resolve(__dirname, '../.env')
+});
+console.log('→ in seeder.js, MONGO_URI =', JSON.stringify(process.env.MONGO_URI));
 const mongoose = require('mongoose');
 const Hotel = require('./models/Hotel');
 const Room = require('./models/Room');

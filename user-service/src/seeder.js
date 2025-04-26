@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const Counter = require('./models/Counter');
+
 const bcrypt = require('bcrypt');
 
 const seedUsers = async () => {
