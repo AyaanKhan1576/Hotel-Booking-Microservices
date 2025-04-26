@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/groupBookingController');
-
+console.log('ctrl:', ctrl);
 // US05.1: create and list
 router.post('/', ctrl.createGroupBooking);
 router.get('/', ctrl.getAgentGroupBookings);

@@ -1,8 +1,8 @@
-import api from './api';
+import { userApi } from './api';
 
 export const getUsers = async () => {
   try {
-    const response = await api.get('/users');
+    const response = await userApi.get('/users');
     return response.data;
   } catch (error) {
     throw error.response.data;
@@ -11,7 +11,7 @@ export const getUsers = async () => {
 
 export const updateUser = async (id, userData) => {
   try {
-    const response = await api.put(`/users/${id}`, userData);
+    const response = await userApi.put(`/users/${id}`, userData);
     return response.data;
   } catch (error) {
     throw error.response.data;
@@ -20,7 +20,7 @@ export const updateUser = async (id, userData) => {
 
 export const deleteUser = async (id) => {
   try {
-    const response = await api.delete(`/users/${id}`);
+    const response = await userApi.delete(`/users/${id}`);
     return response.data;
   } catch (error) {
     throw error.response.data;

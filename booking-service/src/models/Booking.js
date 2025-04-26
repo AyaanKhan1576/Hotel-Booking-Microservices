@@ -1,4 +1,3 @@
-// booking-service/models/Booking.js
 const mongoose = require('mongoose');
 
 const BookingSchema = new mongoose.Schema({
@@ -14,6 +13,12 @@ const BookingSchema = new mongoose.Schema({
     specialAccommodations: { type: String, default: '' },
   },
   paymentStatus: { type: String, default: 'Pending' },
+  loyalty: {
+    pointsUsed: { type: Number, default: 0 },
+    couponCode: { type: String, default: '' },
+    discountApplied: { type: Number, default: 0 }, // $ or % based on reward type
+    isPercentage: { type: Boolean, default: false }
+  }
 });
 
 module.exports = mongoose.model('Booking', BookingSchema);

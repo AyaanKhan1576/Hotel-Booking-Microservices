@@ -1,10 +1,9 @@
-// src/models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const Counter = require('./Counter'); // Import the counter model
+const Counter = require('./Counter');
 
 const userSchema = new mongoose.Schema({
-  userId: { type: Number, unique: true }, // Auto-incrementing integer ID
+  userId: { type: Number, unique: true },
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -17,12 +16,25 @@ const userSchema = new mongoose.Schema({
     itemId: { type: Number, required: true },
     type: { type: String, enum: ['hotel', 'room'], required: true }
   }],
+  loyalty: {
+    isMember: { type: Boolean, default: false },
+    points: { type: Number, default: 0 },
+    coupons: [{
+      code: { type: String, required: true },
+      discountPercentage: { type: Number, required: true }, // e.g., 10 for 10% off
+      expiryDate: { type: Date, required: true },
+      used: { type: Boolean, default: false }
+    }],
+    tier: { 
+      type: String, 
+      enum: ['Bronze', 'Silver', 'Gold'], 
+      default: 'Bronze' 
+    }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
-// Pre-save hook: Auto-increment userId and hash password if modified.
 userSchema.pre('save', async function(next) {
-  // Only assign a new userId if this is a new document and userId isn't set
   if (this.isNew && !this.userId) {
     try {
       const counter = await Counter.findByIdAndUpdate(
@@ -36,7 +48,6 @@ userSchema.pre('save', async function(next) {
     }
   }
 
-  // If password is modified, hash it
   if (this.isModified('password')) {
     try {
       const salt = await bcrypt.genSalt(10);
@@ -48,7 +59,6 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Method to compare passwords
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
