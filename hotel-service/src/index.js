@@ -1,17 +1,17 @@
 // src/index.js
+require('dotenv').config();   
+const cors = require('cors');
+const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-
-dotenv.config();
-const app = express();
-app.use(express.json());
-const cors = require('cors');
-app.use(cors());
-
-
 const hotelRoutes = require('./routes/hotelRoutes');
 const roomRoutes = require('./routes/roomRoutes');
+const seedUsers = require('./seeder');
+
+const app = express();
+app.use(express.json());
+app.use(cors());
 
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/rooms', roomRoutes);
