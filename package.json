@@ -8,7 +8,7 @@
         "start:frontend1": "cd frontend\\user-frontend && npm start",
         "start:frontend2": "cd frontend\\hotel-frontend && npm start",
         "start:frontend3": "cd frontend\\booking-frontend && npm start",
-        "start:all": "concurrently \"npm run start:backend1\" \"npm run start:backend2\" \"npm run start:backend3\" \"npm run start:frontend2\" \"npm run start:frontend3\" \"npm run start:frontend1\""
+        "start": "concurrently \"npm run start:backend1\" \"npm run start:backend2\" \"npm run start:backend3\" "
     },
     "devDependencies": {
         "concurrently": "^8.2.0",
