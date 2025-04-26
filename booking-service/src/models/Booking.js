@@ -1,3 +1,4 @@
+// models/Booking.js
 const mongoose = require('mongoose');
 
 const BookingSchema = new mongoose.Schema({
@@ -16,7 +17,7 @@ const BookingSchema = new mongoose.Schema({
   loyalty: {
     pointsUsed: { type: Number, default: 0 },
     couponCode: { type: String, default: '' },
-    discountApplied: { type: Number, default: 0 }, // $ or % based on reward type
+    discountApplied: { type: Number, default: 0 },
     isPercentage: { type: Boolean, default: false }
   }
 });

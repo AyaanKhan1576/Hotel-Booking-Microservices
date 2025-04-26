@@ -1,336 +1,250 @@
+// controllers/bookingController.js
 const axios = require('axios');
 const Booking = require('../models/Booking');
 const PaymentLog = require('../models/PaymentLog');
+const Feedback = require('../models/Feedback');
+
 const cron = require('node-cron');
 
-// Initialize cron job to free up rooms after checkout
+// free up rooms after checkout
 cron.schedule('0 * * * *', async () => {
   try {
     const now = new Date();
-    const expiredBookings = await Booking.find({
+    const expired = await Booking.find({
       checkOut: { $lt: now },
       paymentStatus: 'Success'
     });
-
-    for (const booking of expiredBookings) {
-      const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
-      await axios.put(`${roomServiceUrl}/api/rooms/${booking.roomId}`, {
-        isAvailable: true,
-        bookedUntil: null,
-        currentBooking: null
+    for (let b of expired) {
+      const svc = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
+      await axios.put(`${svc}/api/rooms/${b.roomId}`, {
+        isAvailable: true, bookedUntil: null, currentBooking: null
       });
     }
-  } catch (err) {
-    console.error('Room availability cron job error:', err);
+  } catch (e) {
+    console.error('Cron error:', e);
   }
 });
 
-const sendNotification = async (guestEmail, subject, message) => {
-  console.log(`Notification sent to ${guestEmail}:\nSubject: ${subject}\nMessage: ${message}`);
+const sendNotification = async (email, subj, msg) => {
+  console.log(`Notification to ${email}: ${subj}\n${msg}`);
 };
 
-// Helper: Check loyalty status via user-service
-const checkLoyaltyStatus = async (email) => {
-  try {
-    const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:5001';
-    const response = await axios.get(`${userServiceUrl}/api/users/loyalty/status`, {
-      params: { email }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error checking loyalty status:', error.message);
-    return { isMember: false };
-  }
-};
-
-// Helper: Redeem loyalty reward
-const redeemLoyaltyReward = async (email, points, couponCode) => {
-  try {
-    const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:5001';
-    const response = await axios.post(`${userServiceUrl}/api/users/loyalty/redeem`, {
-      email,
-      points,
-      couponCode
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error redeeming loyalty reward:', error.message);
-    throw new Error(error.response?.data?.message || 'Failed to redeem loyalty reward');
-  }
-};
-
-// Helper: Generate dates between two dates
 const getDatesBetween = (start, end) => {
   const dates = [];
-  let current = new Date(start);
-  const last = new Date(end);
-  while (current < last) {
-    dates.push(current.toISOString().split('T')[0]);
-    current.setDate(current.getDate() + 1);
+  let cur = new Date(start), last = new Date(end);
+  while (cur < last) {
+    dates.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate() + 1);
   }
   return dates;
 };
 
 exports.createBooking = async (req, res) => {
   const { roomId, guestName, guestEmail, checkIn, checkOut, additionalServices, loyaltyPoints, loyaltyCoupon } = req.body;
-
   try {
-    console.log('Booking request received:', req.body);
+    const svc = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
+    const room = (await axios.get(`${svc}/api/rooms/${roomId}`)).data;
+    if (!room) return res.status(404).json({ msg: 'Room not found' });
 
-    const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
-    // Fetch room from room-service
-    const roomResponse = await axios.get(`${roomServiceUrl}/api/rooms/${roomId}`);
-    const room = roomResponse.data;
-    if (!room) {
-      console.log('Room not found for ID:', roomId);
-      return res.status(404).json({ msg: 'Room not found' });
-    }
-    console.log('Room found:', room._id);
+    const inD = new Date(checkIn), outD = new Date(checkOut);
+    if (isNaN(inD)||isNaN(outD)) return res.status(400).json({ msg: 'Invalid date format' });
 
-    // Normalize dates
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
-    if (isNaN(checkInDate) || isNaN(checkOutDate)) {
-      console.log('Invalid date format - checkIn:', checkIn, 'checkOut:', checkOut);
-      return res.status(400).json({ msg: 'Invalid date format' });
-    }
+    const dates = getDatesBetween(inD, outD);
+    if (!dates.every(d => room.availableDates.includes(d)))
+      return res.status(400).json({ msg: 'Room not available' });
 
-    // Generate required dates
-    const requiredDates = getDatesBetween(checkInDate, checkOutDate);
-    console.log('Required dates:', requiredDates);
-
-    // Check availability in room-service
-    const isAvailable = requiredDates.every((date) => room.availableDates.includes(date));
-    if (!isAvailable) {
-      console.log('Availability check failed for dates:', requiredDates);
-      return res.status(400).json({ msg: 'Room is not available for the selected dates' });
-    }
-
-    // Check for booking conflicts
-    const existingBookings = await Booking.find({
-      roomId: roomId,
-      $or: [
-        { checkIn: { $lte: checkOutDate, $gte: checkInDate } },
-        { checkOut: { $gte: checkInDate, $lte: checkOutDate } },
-        { checkIn: { $lte: checkInDate }, checkOut: { $gte: checkOutDate } },
-      ],
-    });
-    if (existingBookings.length > 0) {
-      console.log('Booking conflict detected');
-      return res.status(400).json({ msg: 'Room is already booked for the selected dates' });
-    }
-
-    // Create booking
-    const booking = new Booking({
+    const conflicts = await Booking.find({
       roomId,
-      guestName,
-      guestEmail,
-      checkIn: checkInDate,
-      checkOut: checkOutDate,
+      $or: [
+        { checkIn: { $lte: outD, $gte: inD } },
+        { checkOut:{ $gte: inD, $lte: outD } },
+        { checkIn:{ $lte: inD }, checkOut:{ $gte: outD } }
+      ]
+    });
+    if (conflicts.length) return res.status(400).json({ msg: 'Booking conflict detected' });
+
+    const booking = new Booking({
+      roomId, guestName, guestEmail,
+      checkIn: inD, checkOut: outD,
       additionalServices,
-      loyalty: {
-        pointsUsed: loyaltyPoints || 0,
-        couponCode: loyaltyCoupon || ''
-      }
+      loyalty: { pointsUsed: loyaltyPoints||0, couponCode: loyaltyCoupon||'' }
     });
     await booking.save();
-    console.log('Booking created:', booking._id);
 
-    // Update room availability
-    const updatedAvailableDates = room.availableDates.filter((date) => !requiredDates.includes(date));
-    await axios.put(`${roomServiceUrl}/api/rooms/${roomId}`, { availableDates: updatedAvailableDates });
-    console.log('Room availableDates updated');
+    const updated = room.availableDates.filter(d => !dates.includes(d));
+    await axios.put(`${svc}/api/rooms/${roomId}`, { availableDates: updated });
 
     res.status(201).json({ booking });
-  } catch (error) {
-    console.error('Error in createBooking:', error.message, error.stack);
-    res.status(500).json({ msg: 'Server error', error: error.message });
+  } catch (err) {
+    console.error('Error in createBooking:', err);
+    res.status(500).json({ msg:'Server error', error: err.message });
   }
 };
 
 exports.cancelBooking = async (req, res) => {
   try {
-    const bookingId = req.params.id;
-    const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ msg: 'Booking not found' });
+    const b = await Booking.findById(req.params.id);
+    if (!b) return res.status(404).json({ msg:'Booking not found' });
 
-    const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
-
-    // Get dates to potentially restore
-    const datesToAdd = getDatesBetween(booking.checkIn, booking.checkOut);
-
-    // Find other active bookings for the room
-    const otherBookings = await Booking.find({
-      roomId: booking.roomId,
-      paymentStatus: { $ne: 'Cancelled' },
-      _id: { $ne: booking._id }
+    const dates = getDatesBetween(b.checkIn, b.checkOut);
+    const others = await Booking.find({
+      roomId: b.roomId, paymentStatus:{ $ne:'Cancelled' }, _id:{ $ne:b._id }
     });
+    const toRestore = dates.filter(d =>
+      !others.some(o => new Date(o.checkIn)<=new Date(d)&&new Date(d)<new Date(o.checkOut))
+    );
 
-    // Determine which dates can be added back
-    const unbookedDates = datesToAdd.filter(date => {
-      const dateObj = new Date(date);
-      return !otherBookings.some(b => new Date(b.checkIn) <= dateObj && dateObj < new Date(b.checkOut));
-    });
+    const svc = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
+    const room = (await axios.get(`${svc}/api/rooms/${b.roomId}`)).data;
+    const newAvail = [...new Set([...(room.availableDates||[]), ...toRestore])].sort();
+    await axios.put(`${svc}/api/rooms/${b.roomId}`, { availableDates: newAvail });
 
-    // Fetch current room data
-    const roomResponse = await axios.get(`${roomServiceUrl}/api/rooms/${booking.roomId}`);
-    const room = roomResponse.data;
+    b.paymentStatus = 'Cancelled';
+    await b.save();
 
-    // Update availableDates
-    const currentAvailableDates = room.availableDates || [];
-    const newAvailableDates = [...new Set([...currentAvailableDates, ...unbookedDates])].sort();
-
-    await axios.put(`${roomServiceUrl}/api/rooms/${booking.roomId}`, {
-      availableDates: newAvailableDates
-    });
-
-    // Update booking status
-    booking.paymentStatus = 'Cancelled';
-    await booking.save();
-
-    // Refund loyalty points if used
-    if (booking.loyalty.pointsUsed > 0) {
-      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:5001';
-      await axios.post(`${userServiceUrl}/api/users/loyalty/award`, {
-        email: booking.guestEmail,
-        points: booking.loyalty.pointsUsed
+    if (b.loyalty.pointsUsed>0) {
+      const us = process.env.USER_SERVICE_URL||'http://localhost:5001';
+      await axios.post(`${us}/api/users/loyalty/award`, {
+        email: b.guestEmail, points: b.loyalty.pointsUsed
       });
     }
 
-    await sendNotification(booking.guestEmail, 'Booking Cancelled', 'Your booking has been cancelled');
-    res.json({ msg: 'Booking cancelled', booking });
+    await sendNotification(b.guestEmail,'Booking Cancelled','Your booking has been cancelled');
+    res.json({ msg:'Booking cancelled', booking: b });
   } catch (err) {
-    console.error('Error in cancelBooking:', err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };
 
 exports.getUserBookings = async (req, res) => {
   try {
     const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ msg: 'Email is required' });
-    }
+    if (!email) return res.status(400).json({ msg:'Email is required' });
 
-    // Fetch bookings for the user
-    const bookings = await Booking.find({ guestEmail: email }).lean();
+    const raw = await Booking.find({ guestEmail: email }).lean();
+    if (!raw.length) return res.status(404).json({ msg:'No bookings found' });
 
-    if (!bookings || bookings.length === 0) {
-      return res.status(404).json({ msg: 'No bookings found for this user' });
-    }
-
-    const roomServiceUrl = process.env.ROOM_SERVICE_URL || 'http://localhost:5000';
-
-    // Enrich bookings with room details
-    const enrichedBookings = await Promise.all(
-      bookings.map(async (booking) => {
-        try {
-          const roomResponse = await axios.get(`${roomServiceUrl}/api/rooms/${booking.roomId}`);
-          const room = roomResponse.data;
-          return {
-            ...booking,
-            roomDetails: {
-              roomNumber: room.roomNumber || 'N/A',
-              type: room.type || 'N/A',
-              price: room.price || 0
-            }
-          };
-        } catch (error) {
-          console.error(`Error fetching room details for booking ${booking._id}:`, error.message);
-          return {
-            ...booking,
-            roomDetails: { error: 'Unable to fetch room details' }
-          };
-        }
-      })
-    );
-
-    res.status(200).json({ bookings: enrichedBookings });
+    const svc = process.env.ROOM_SERVICE_URL||'http://localhost:5000';
+    const enriched = await Promise.all(raw.map(async b => {
+      try {
+        const r = (await axios.get(`${svc}/api/rooms/${b.roomId}`)).data;
+        return { ...b, roomDetails: { roomNumber: r.roomNumber, type: r.type, price: r.price } };
+      } catch {
+        return { ...b, roomDetails:{ error:'Unable to fetch room details' } };
+      }
+    }));
+    res.json({ bookings: enriched });
   } catch (err) {
-    console.error('Error in getUserBookings:', err.message, err.stack);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };
 
 exports.updateBooking = async (req, res) => {
   try {
-    const { id } = req.params;
+    const b = await Booking.findById(req.params.id);
+    if (!b) return res.status(404).json({ msg:'Booking not found' });
+    if (b.paymentStatus==='Cancelled')
+      return res.status(400).json({ msg:'Cannot update a cancelled booking' });
+
     const { additionalServices, loyaltyPoints } = req.body;
-    const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ msg: 'Booking not found' });
-    }
-    if (booking.paymentStatus === 'Cancelled') {
-      return res.status(400).json({ msg: 'Cannot update a cancelled booking' });
-    }
-    if (additionalServices) {
-      booking.additionalServices = { ...booking.additionalServices, ...additionalServices };
-    }
-    if (loyaltyPoints !== undefined) {
-      booking.loyalty.pointsUsed = loyaltyPoints;
-    }
-    await booking.save();
-    res.json(booking);
+    if (additionalServices) b.additionalServices = { ...b.additionalServices, ...additionalServices };
+    if (loyaltyPoints!==undefined) b.loyalty.pointsUsed = loyaltyPoints;
+    await b.save();
+    res.json(b);
   } catch (err) {
-    console.error('Error in updateBooking:', err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };
 
 exports.processPayment = async (req, res) => {
   try {
-    const { id } = req.params;
     const { status, details } = req.body;
-    const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ msg: 'Booking not found' });
-    }
-    if (booking.paymentStatus !== 'Pending') {
-      return res.status(400).json({ msg: 'Payment already processed or booking cancelled' });
-    }
-    booking.paymentStatus = status;
-    await booking.save();
+    const b = await Booking.findById(req.params.id);
+    if (!b) return res.status(404).json({ msg:'Booking not found' });
+    if (b.paymentStatus!=='Pending')
+      return res.status(400).json({ msg:'Payment already processed or booking cancelled' });
 
-    const paymentLog = new PaymentLog({
-      bookingId: id,
-      transactionStatus: status,
-      details
-    });
-    await paymentLog.save();
-
-    await sendNotification(booking.guestEmail, `Payment ${status}`, `Your payment has been processed with status: ${status}`);
-    res.json({ msg: 'Payment processed', booking });
+    b.paymentStatus = status;
+    await b.save();
+    await new PaymentLog({ bookingId: b._id, transactionStatus: status, details }).save();
+    await sendNotification(b.guestEmail,`Payment ${status}`,`Your payment has been processed`);
+    res.json({ msg:'Payment processed', booking: b });
   } catch (err) {
-    console.error('Error in processPayment:', err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };
 
 exports.getBookingById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ msg: 'Booking not found' });
-    }
-    res.json(booking);
+    const b = await Booking.findById(req.params.id);
+    if (!b) return res.status(404).json({ msg:'Booking not found' });
+    res.json(b);
   } catch (err) {
-    console.error('Error in getBookingById:', err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };
 
 exports.awardLoyaltyPoints = async (req, res) => {
   try {
     const { email, points } = req.body;
-    if (!email || points === undefined) {
-      return res.status(400).json({ msg: 'Email and points are required' });
-    }
-    const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:5001';
-    await axios.post(`${userServiceUrl}/api/users/loyalty/award`, { email, points });
-    res.json({ msg: 'Loyalty points awarded' });
+    if (!email||points===undefined)
+      return res.status(400).json({ msg:'Email and points are required' });
+    const us = process.env.USER_SERVICE_URL||'http://localhost:5001';
+    await axios.post(`${us}/api/users/loyalty/award`,{ email, points });
+    res.json({ msg:'Loyalty points awarded' });
   } catch (err) {
-    console.error('Error in awardLoyaltyPoints:', err);
-    res.status(500).json({ error: 'Server Error' });
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
+  }
+};
+
+exports.submitFeedback = async (req, res) => {
+  try {
+    const { bookingId, rating, comment } = req.body;
+    const { email } = req.query;
+    if (!bookingId||!rating||!comment||!email)
+      return res.status(400).json({ msg:'Booking ID, rating, comment, and email are required' });
+
+    const b = await Booking.findById(bookingId);
+    if (!b) return res.status(404).json({ msg:'Booking not found' });
+    if (b.guestEmail !== email)
+      return res.status(403).json({ msg:'Unauthorized: Email does not match booking' });
+
+    if (new Date(b.checkOut) > new Date())
+      return res.status(400).json({ msg:'Feedback can only be submitted after check-out' });
+
+    let fb = await Feedback.findOne({ bookingId });
+    if (fb) {
+      fb.rating = rating;
+      fb.comment = comment;
+      fb.createdAt = new Date();
+    } else {
+      fb = new Feedback({ bookingId, guestEmail: email, rating, comment });
+    }
+    await fb.save();
+    res.status(201).json({ msg:'Feedback submitted successfully', feedback: fb });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
+  }
+};
+
+exports.getFeedback = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { email } = req.query;
+    const fb = await Feedback.findOne({ bookingId });
+    if (!fb) return res.status(404).json({ msg:'No feedback found for this booking' });
+    if (fb.guestEmail !== email)
+      return res.status(403).json({ msg:'Unauthorized: Email does not match feedback' });
+    res.json(fb);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error:'Server Error' });
   }
 };

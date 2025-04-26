@@ -2,6 +2,7 @@ const axios = require('axios');
 const GroupBooking = require('../models/GroupBooking');
 const Booking = require('../models/Booking');
 
+
 // Helper: Generate an array of date strings (YYYY-MM-DD)
 const getDatesBetween = (start, end) => {
   const dates = [];

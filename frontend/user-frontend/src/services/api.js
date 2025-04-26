@@ -1,25 +1,34 @@
 import axios from 'axios';
 
-const createApiInstance = (baseURL) => {
-  const instance = axios.create({
-    baseURL,
-    withCredentials: true
-  });
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
+  withCredentials: true // Add this line
+});
 
-  instance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  }, (error) => {
-    return Promise.reject(error);
-  });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-  return instance;
-};
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-const userApi = createApiInstance(process.env.REACT_APP_USER_API_URL || 'http://localhost:5000/api');
-const bookingApi = createApiInstance(process.env.REACT_APP_BOOKING_API_URL || 'http://localhost:5002/api');
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
-export { userApi, bookingApi };
+export default api;
