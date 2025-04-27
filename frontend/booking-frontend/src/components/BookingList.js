@@ -1,6 +1,5 @@
-// Updated BookingList.js
 import React, { useState } from 'react';
-import API from '../api';
+import { BookingAPI } from '../api';
 import { Link } from 'react-router-dom';
 import { Form, Button, Alert, Card, Row, Col } from 'react-bootstrap';
 
@@ -12,12 +11,18 @@ const BookingList = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
     try {
-      const res = await API.get('/bookings/search', { params: { guestEmail } });
-      setBookings(res.data);
-      setMessage('');
+      const res = await BookingAPI.get('/bookings/search', { params: { email: guestEmail } });
+      setBookings(res.data.bookings || []);
+      setMessage(res.data.bookings.length === 0 ? 'No bookings found.' : '');
     } catch (err) {
-      setMessage('Error fetching bookings');
+      setMessage(err.response?.data?.msg || 'Error fetching bookings');
     }
+  };
+
+  const calculateTotalPrice = (booking) => {
+    if (!booking.roomDetails?.price) return 0;
+    const nights = (new Date(booking.checkOut) - new Date(booking.checkIn)) / (1000 * 60 * 60 * 24);
+    return (booking.roomDetails.price * nights).toFixed(2);
   };
 
   return (
@@ -49,9 +54,10 @@ const BookingList = () => {
                     {new Date(b.checkIn).toLocaleDateString()} to {new Date(b.checkOut).toLocaleDateString()}
                   </Card.Subtitle>
                   <Card.Text>
-                    Total: ${b.totalPrice} <br />
-                    Status: {b.paymentStatus} <br />
-                    Loyalty Used: {b.loyalty.pointsUsed} pts, Coupon: {b.loyalty.couponCode} <br />
+                    Room: {b.roomDetails?.roomNumber || 'N/A'} ({b.roomDetails?.type || 'N/A'})<br />
+                    Total: ${calculateTotalPrice(b)}<br />
+                    Status: {b.paymentStatus}<br />
+                    Loyalty Used: {b.loyalty.pointsUsed} pts, Coupon: {b.loyalty.couponCode || 'None'}<br />
                     Discount: {b.loyalty.isPercentage ? `${b.loyalty.discountApplied}%` : `$${b.loyalty.discountApplied}`}
                   </Card.Text>
                   <Link to={`/booking/${b._id}`}>View Details</Link>

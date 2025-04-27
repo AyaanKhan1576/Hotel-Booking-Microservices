@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { HotelAPI } from '../api';
 import { Card, Button, Form, Row, Col } from 'react-bootstrap';
 
 const RoomList = ({ hotelId, checkIn, checkOut, selectionMode, onSelect, selectedRooms, onToggleRoom }) => {
@@ -12,10 +12,14 @@ const RoomList = ({ hotelId, checkIn, checkOut, selectionMode, onSelect, selecte
       if (!hotelId || !checkIn || !checkOut) return;
       setLoading(true);
       try {
-        const res = await axios.get('http://localhost:5000/api/rooms', {
+        const res = await HotelAPI.get('/rooms', {
           params: { hotel: hotelId, checkIn, checkOut, ...filters }
         });
-        setRooms(res.data);
+        setRooms(res.data.map(room => ({
+          ...room,
+          roomno: room.roomNumber || room.roomno,
+          image: room.image || 'https://via.placeholder.com/150'
+        })));
       } catch (error) {
         console.error('Error fetching rooms:', error);
       } finally {
@@ -80,7 +84,7 @@ const RoomList = ({ hotelId, checkIn, checkOut, selectionMode, onSelect, selecte
         {rooms.map((room) => (
           <Col key={room._id} md={4} className="mb-3">
             <Card>
-              <Card.Img variant="top" src={room.image || 'https://via.placeholder.com/150'} style={{ height: '150px', objectFit: 'cover' }} />
+              <Card.Img variant="top" src={room.image} style={{ height: '150px', objectFit: 'cover' }} />
               <Card.Body>
                 <Card.Title>{room.roomno} - {room.type}</Card.Title>
                 <Card.Text>
@@ -88,8 +92,8 @@ const RoomList = ({ hotelId, checkIn, checkOut, selectionMode, onSelect, selecte
                   {room.description || 'Comfortable room with essential amenities.'}
                 </Card.Text>
                 {selectionMode === 'single' ? (
-                  <Button variant="primary" onClick={() => onSelect(room._id)}>
-                    Book Now
+                  <Button variant="primary" onClick={() => onSelect(room)}>
+ensics                    Book Now
                   </Button>
                 ) : (
                   <Form.Check
