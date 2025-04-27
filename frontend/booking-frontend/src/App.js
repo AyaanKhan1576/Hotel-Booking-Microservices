@@ -4,6 +4,7 @@ import BookingForm from './components/BookingForm';
 import BookingList from './components/BookingList';
 import BookingDetails from './components/BookingDetails';
 import GroupBookingForm from './components/GroupBookingForm';
+import './index.css';
 
 function App() {
   return (

@@ -6,14 +6,27 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useContext(AuthContext);
+  const { login } = useContext(AuthContext); // Get user from context
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login({ email, password });
-      navigate('/');
+      const userData = await login({ email, password });
+      
+      switch (userData.role) {
+        case 'user':
+          window.location.href = 'http://localhost:3002';
+          break;
+        case 'travelAgent':
+          window.location.href = 'http://localhost:3002/group-booking';
+          break;
+        case 'hotelManagement':
+          window.location.href = 'http://localhost:3001/';
+          break;
+        default:
+          navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     }
