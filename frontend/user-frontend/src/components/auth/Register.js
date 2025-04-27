@@ -1,7 +1,9 @@
 // src/components/auth/Register.jsx
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../../services/authService';
+
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +15,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -47,19 +50,22 @@ const Register = () => {
     setIsSubmitting(true);
 
     try {
-      // register() returns the parsed JSON: { message: "...", userId: ... }
-      const response = await register(formData);
-
-      if (response?.message) {
-        navigate('/login', {
-          state: {
-            registrationSuccess: true,
-            message: 'Registration successful! Please login.'
-          }
-        });
-      } else {
-        // Should never hit this if backend adheres to the contract
-        throw new Error('Unexpected response from server');
+      await register(formData);
+      // Automatically log in the user after registration
+      await login({ email: formData.email, password: formData.password });
+      // Navigate based on role
+      switch (formData.role) {
+        case 'user':
+          window.location.href = 'http://localhost:3002';
+          break;
+        case 'travelAgent':
+          window.location.href = 'http://localhost:3002/group-booking';
+          break;
+        case 'hotelManagement':
+          window.location.href = 'http://localhost:3001/';
+          break;
+        default:
+          navigate('/');
       }
     } catch (err) {
       // err may be an Axios error wrapper, so dig into err.response.data
