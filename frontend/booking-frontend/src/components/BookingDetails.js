@@ -1,23 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import API from '../api';
+import { BookingAPI } from '../api';
 
 const BookingDetails = () => {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
-  const [updateData, setUpdateData] = useState({});
+  const [updateData, setUpdateData] = useState({ additionalServices: {} });
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
   const fetchBooking = useCallback(async () => {
     try {
-      const res = await API.get(`/bookings/${id}`);
+      const res = await BookingAPI.get(`/bookings/${id}`);
       setBooking(res.data);
       setUpdateData({
         additionalServices: res.data.additionalServices
       });
     } catch (err) {
-      setMessage('Error fetching booking details');
+      setMessage(err.response?.data?.msg || 'Error fetching booking details');
     }
   }, [id]);
 
@@ -38,22 +38,21 @@ const BookingDetails = () => {
 
   const handleUpdate = async () => {
     try {
-      const res = await API.put(`/bookings/${id}`, updateData);
-      setBooking(res.data.booking);
+      const res = await BookingAPI.put(`/bookings/${id}`, updateData);
+      setBooking(res.data);
       setMessage('Booking updated successfully!');
     } catch (err) {
-      setMessage('Error updating booking');
+      setMessage(err.response?.data?.msg || 'Error updating booking');
     }
   };
 
   const handleCancel = async () => {
     try {
-      await API.delete(`/bookings/${id}`);
+      await BookingAPI.delete(`/bookings/${id}`);
       setMessage('Booking cancelled successfully!');
-      // Redirect after cancellation
       navigate('/');
     } catch (err) {
-      setMessage('Error cancelling booking');
+      setMessage(err.response?.data?.msg || 'Error cancelling booking');
     }
   };
 

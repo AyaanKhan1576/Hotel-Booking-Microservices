@@ -1,14 +1,14 @@
 // seed.js
 const path = require('path');
 require('dotenv').config({
-  path: path.resolve(__dirname, '../.env')
+  path: path.resolve(__dirname, '../.env'),
 });
-console.log('→ in seeder.js, MONGO_URI =', JSON.stringify(process.env.MONGO_URI));
+console.log('→ in seed.js, MONGO_URI =', JSON.stringify(process.env.MONGO_URI));
 const mongoose = require('mongoose');
 const Hotel = require('./models/Hotel');
 const Room = require('./models/Room');
 
-// Helper: generate an array of dates (YYYY-MM-DD) between two dates (inclusive of start, exclusive of end)
+// Helper: Generate an array of dates (YYYY-MM-DD) between two dates (inclusive of start, exclusive of end)
 const generateDates = (start, end) => {
   const dates = [];
   let current = new Date(start);
@@ -20,80 +20,119 @@ const generateDates = (start, end) => {
   return dates;
 };
 
+// Helper: Generate random hotel name
+const getRandomHotelName = () => {
+  const prefixes = ['Grand', 'Royal', 'Sunset', 'Ocean', 'Star', 'City', 'Elite', 'Paradise'];
+  const suffixes = ['Plaza', 'Inn', 'Resort', 'Hotel', 'Lodge', 'Suites'];
+  return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${
+    suffixes[Math.floor(Math.random() * suffixes.length)]
+  }`;
+};
+
+// Helper: Generate random location
+const getRandomLocation = () => {
+  const locations = ['New York', 'Los Angeles', 'Chicago', 'Miami', 'San Francisco', 'Las Vegas', 'Boston'];
+  return locations[Math.floor(Math.random() * locations.length)];
+};
+
+// Helper: Generate random contact info
+const getRandomContact = () => {
+  return `555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
+};
+
+// Helper: Generate random room number
+const getRandomRoomNo = () => {
+  return `${Math.floor(1 + Math.random() * 9)}${Math.floor(100 + Math.random() * 900)}`; // e.g., 2101, 4302
+};
+
 const seedData = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("Connected to MongoDB for seeding.");
+    console.log('Connected to MongoDB for seeding.');
 
-    // Clear existing hotels and rooms if needed:
+    // Clear existing hotels and rooms
     await Hotel.deleteMany();
     await Room.deleteMany();
+    console.log('Cleared existing Hotels and Rooms.');
 
-    // Create a dummy hotel
-    const hotel = new Hotel({
-      name: "Grand Plaza",
-      location: "New York",
-      contactInfo: "123-456-7890",
-      rooms: []
-    });
-    const hotel2 = new Hotel({
-      name: "Tipton Hotel",
-      location: "New York",
-      contactInfo: "321-654-987",
-      rooms: []
-    });
-    await hotel.save();
-    await hotel2.save();
+    // Define hotels
+    const hotels = [
+      {
+        name: 'Grand Plaza',
+        location: 'New York',
+        contactInfo: '123-456-7890',
+        rooms: [],
+      },
+      {
+        name: 'Tipton Hotel',
+        location: 'New York',
+        contactInfo: '321-654-0987',
+        rooms: [],
+      },
+      {
+        name: 'Sunset Resort',
+        location: 'Miami',
+        contactInfo: '555-123-4567',
+        rooms: [],
+      },
+      {
+        name: getRandomHotelName(),
+        location: getRandomLocation(),
+        contactInfo: getRandomContact(),
+        rooms: [],
+      },
+      {
+        name: getRandomHotelName(),
+        location: getRandomLocation(),
+        contactInfo: getRandomContact(),
+        rooms: [],
+      },
+    ];
 
-    // Create dummy rooms with availableDates (for example, available throughout June 2025)
-    const availableDates = generateDates("2025-06-01", "2025-07-01");
+    const savedHotels = [];
+    for (const hotelData of hotels) {
+      const hotel = new Hotel(hotelData);
+      await hotel.save();
+      savedHotels.push(hotel);
+      console.log(`🌱 Seeded hotel: ${hotel.name} | ID: ${hotel._id}`);
+    }
 
-    const room1 = new Room({
-      roomno: "101",
-      type: "Deluxe",
-      capacity: 2,
-      price: 150,
-      amenities: ["WiFi", "TV", "Mini Bar"],
-      hotel: hotel._id,
-      availableDates: availableDates
-    });
+    // Generate available dates for rooms (June 2025)
+    const availableDates = generateDates('2025-06-01', '2025-07-01');
 
-    const room2 = new Room({
-      roomno: "102",
-      type: "Suite",
-      capacity: 4,
-      price: 300,
-      amenities: ["WiFi", "TV", "Jacuzzi"],
-      hotel: hotel._id,
-      availableDates: availableDates
-    });
+    const roomTypes = ['Standard', 'Deluxe', 'Suite'];
+    const amenitiesOptions = [
+      ['WiFi', 'TV', 'Mini Bar'],
+      ['WiFi', 'TV', 'Jacuzzi'],
+      ['WiFi', 'Air Conditioning'],
+      ['WiFi', 'TV', 'Coffee Maker'],
+    ];
 
-    const room3 = new Room({
-      roomno: "105",
-      type: "Deluxe",
-      capacity: 2,
-      price: 150,
-      amenities: ["WiFi", "TV", "Mini Bar"],
-      hotel: hotel2._id,
-      availableDates: availableDates
-    });
+    const rooms = [];
+    for (const hotel of savedHotels) {
+      const roomCount = Math.floor(Math.random() * 4) + 2; // 2-5 rooms per hotel
+      for (let i = 0; i < roomCount; i++) {
+        const room = new Room({
+          roomno: getRandomRoomNo(),
+          type: roomTypes[Math.floor(Math.random() * roomTypes.length)],
+          capacity: Math.floor(Math.random() * 4) + 1, // 1-4
+          price: Math.floor(Math.random() * 200) + 100, // 100-300
+          amenities: amenitiesOptions[Math.floor(Math.random() * amenitiesOptions.length)],
+          hotel: hotel._id,
+          availableDates,
+        });
+        await room.save();
+        hotel.rooms.push(room._id);
+        rooms.push(room);
+        console.log(`🌱 Seeded room: ${room.roomno} | Type: ${room.type} | Hotel: ${hotel.name}`);
+      }
+      await hotel.save();
+    }
 
-
-    await room1.save();
-    await room2.save();
-    await room3.save();
-
-    // Update hotel with room references
-    hotel.rooms.push(room1._id, room2._id);
-    await hotel.save();
-
-    hotel2.rooms.push(room3._id);
-    await hotel2.save();
-
-    console.log("Dummy data seeded successfully!");
+    console.log('✅ Database seeded successfully with hotels and rooms');
     process.exit();
   } catch (err) {
-    console.error("Seeding error:", err);
+    console.error('Seeding error:', err);
     process.exit(1);
   }
 };

@@ -16,7 +16,7 @@ const Login = () => {
       
       switch (userData.role) {
         case 'user':
-          window.location.href = 'http://localhost:3002';
+          window.location.href = 'http://localhost:3002/';
           break;
         case 'travelAgent':
           window.location.href = 'http://localhost:3002/group-booking';
