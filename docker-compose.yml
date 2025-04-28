@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:6
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
+  user-service:
+    build: ./user-service
+    env_file:
+      - ./user-service/.env
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongo
+
+  hotel-service:
+    build: ./hotel-service
+    env_file:
+      - ./hotel-service/.env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+
+  booking-service:
+    build: ./booking-service
+    env_file:
+      - ./booking-service/.env
+    ports:
+      - "5002:5002"
+    depends_on:
+      - mongo
+      - user-service
+      - hotel-service
+
+  joint-frontend:
+    build: ./frontend/joint-frontend
+    env_file:
+      - ./frontend/joint-frontend/.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - user-service
+      - hotel-service
+      - booking-service
+
+volumes:
+  mongo-data:
