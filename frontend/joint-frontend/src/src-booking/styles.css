@@ -1,27 +1,158 @@
-.react-datepicker-wrapper {
-    width: 100%;
-  }
-  
-  .card-hover {
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .card-hover:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  }
-  
-  .room-card.selected {
-    border: 2px solid #0d6efd;
-    background-color: #f8f9fa;
-  }
+/* style.css */
+:root {
+  --primary-blue: #0d6efd;
+  --light-blue: #e7f1ff;
+  --dark-blue: #052c65;
+  --white: #ffffff;
+  --light-gray: #f8f9fa;
+  --medium-gray: #e9ecef;
+  --dark-gray: #6c757d;
+}
 
-  .react-datepicker__day--highlighted {
-    background-color: #198754;
-    color: white;
+body {
+  background-color: var(--light-gray);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Navbar styling */
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+/* Card styling */
+.card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card-hover {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  background-color: var(--primary-blue);
+  color: white;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Button styling */
+.btn-primary {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+}
+
+.btn-outline-primary {
+  color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-blue);
+  color: white;
+}
+
+/* Form styling */
+.form-control, .form-select {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--medium-gray);
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Alert styling */
+.alert {
+  border-radius: 8px;
+}
+
+/* Room card styling */
+.room-card {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--medium-gray);
+}
+
+.room-card.selected {
+  border: 2px solid var(--primary-blue);
+  background-color: var(--light-blue);
+}
+
+.room-card .card-img-top {
+  height: 200px;
+  object-fit: cover;
+}
+
+.room-card .card-title {
+  color: var(--dark-blue);
+  font-weight: 600;
+}
+
+/* Booking details styling */
+.booking-detail-item {
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Feedback form styling */
+.feedback-form {
+  background-color: white;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Datepicker styling */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__day--highlighted {
+  background-color: #198754;
+  color: white;
+}
+
+.react-datepicker__day--disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Utility classes */
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.rounded-lg {
+  border-radius: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1rem;
   }
-  
-  .react-datepicker__day--disabled {
-    color: #ccc;
-    cursor: not-allowed;
-  }
+}

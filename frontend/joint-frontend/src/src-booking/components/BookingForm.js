@@ -1,4 +1,3 @@
-// src/components/BookingForm.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HotelAPI, BookingAPI, UserAPI } from '../api';
@@ -11,12 +10,12 @@ import {
   Button,
   Alert,
   ListGroup,
-  ListGroupItem,
-  Badge
+  Badge,
+  Spinner
 } from 'react-bootstrap';
 import deluxe_room from './imgs/deluxe.jpeg';
-import std_room    from './imgs/standard.jpeg';
-import suite_room  from './imgs/deluxe.jpeg';
+import std_room from './imgs/standard.jpeg';
+import suite_room from './imgs/deluxe.jpeg';
 
 const ROOM_TYPES = {
   Deluxe: {
@@ -38,10 +37,11 @@ const ROOM_TYPES = {
 
 const BookingForm = () => {
   const navigate = useNavigate();
-  const [hotels, setHotels]               = useState([]);
-  const [selectedRoom, setSelectedRoom]   = useState(null);
-  const [isLoyaltyCustomer, setLoyalty]   = useState(false);
-  const [formData, setFormData]           = useState({
+  const [hotels, setHotels] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [isLoyaltyCustomer, setLoyalty] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
     checkIn: '',
     checkOut: '',
     guestName: '',
@@ -54,21 +54,25 @@ const BookingForm = () => {
       specialAccommodations: '',
     },
   });
-  const [message, setMessage]             = useState({ type: '', content: '' });
+  const [message, setMessage] = useState({ type: '', content: '' });
 
-  // Load hotels on mount
   useEffect(() => {
-    HotelAPI.get('/hotels')
-      .then(res => setHotels(res.data))
-      .catch(() =>
-        setMessage({ type: 'danger', content: 'Error loading hotels' })
-      );
+    const fetchHotels = async () => {
+      try {
+        const res = await HotelAPI.get('/hotels');
+        setHotels(res.data);
+      } catch (error) {
+        setMessage({ type: 'danger', content: 'Error loading hotels' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHotels();
   }, []);
 
-  // Handle form inputs
   const handleInputChange = e => {
     const { name, value, type, checked } = e.target;
-    if (['breakfast','airportTransport','specialAccommodations'].includes(name)) {
+    if (['breakfast', 'airportTransport', 'specialAccommodations'].includes(name)) {
       setFormData(f => ({
         ...f,
         additionalServices: {
@@ -84,7 +88,6 @@ const BookingForm = () => {
     }
   };
 
-  // Loyalty toggle
   const handleLoyaltyCheckbox = e => {
     const on = e.target.checked;
     setLoyalty(on);
@@ -93,17 +96,16 @@ const BookingForm = () => {
     }
   };
 
-  // Add a room to favorites
   const handleAddFavorite = async room => {
     try {
-      const token  = localStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       if (!token || !userId) {
         throw new Error('You must be logged in to favorite rooms.');
       }
 
       await UserAPI.post(
-        `/${userId}/favorites`,        // <-- Correct endpoint
+        `/${userId}/favorites`,
         { itemId: room._id, type: 'room' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -117,7 +119,6 @@ const BookingForm = () => {
     }
   };
 
-  // Submit booking
   const handleSubmit = async e => {
     e.preventDefault();
     if (!selectedRoom) {
@@ -129,7 +130,7 @@ const BookingForm = () => {
       return setMessage({ type: 'danger', content: 'Please fill all fields' });
     }
 
-    const inDate  = new Date(checkIn);
+    const inDate = new Date(checkIn);
     const outDate = new Date(checkOut);
     if (outDate <= inDate) {
       return setMessage({ type: 'danger', content: 'Check-out must be after check-in' });
@@ -151,6 +152,7 @@ const BookingForm = () => {
     };
 
     try {
+      setLoading(true);
       const res = await BookingAPI.post('/bookings', payload);
       navigate(`/booking/${res.data.booking._id}`);
     } catch (err) {
@@ -158,85 +160,102 @@ const BookingForm = () => {
         type: 'danger',
         content: err.response?.data?.msg || 'Booking failed'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const today = new Date().toISOString().split('T')[0];
 
+  if (loading) {
+    return (
+      <Container className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+        <Spinner animation="border" variant="primary" />
+      </Container>
+    );
+  }
+
   return (
     <Container className="my-5">
-      <Button variant="info" onClick={() => navigate('/bookings')} className="mb-4">
-        My Bookings
+      <Button variant="outline-primary" onClick={() => navigate('/bookings')} className="mb-4">
+        <i className="bi bi-arrow-left me-2"></i>View My Bookings
       </Button>
-      {message.content && <Alert variant={message.type}>{message.content}</Alert>}
+      
+      {message.content && (
+        <Alert variant={message.type} className="rounded-lg">
+          {message.content}
+        </Alert>
+      )}
 
       {!selectedRoom ? (
         <>
-          <h2 className="mb-4">Available Hotels</h2>
+          <h2 className="mb-4 text-primary">Available Hotels</h2>
           <Row>
             {hotels.map(hotel => (
               <Col key={hotel._id} md={6} className="mb-4">
-                <Card className="h-100 shadow">
+                <Card className="h-100 shadow-sm">
+                  <Card.Header className="bg-primary text-white">
+                    <Card.Title className="mb-0">{hotel.name}</Card.Title>
+                    <Card.Subtitle className="text-white-50">{hotel.location}</Card.Subtitle>
+                  </Card.Header>
                   <Card.Body>
-                    <Card.Title>{hotel.name}</Card.Title>
-                    <Card.Subtitle className="mb-2 text-muted">
-                      {hotel.location}
-                    </Card.Subtitle>
-                    <Card.Text>{hotel.description}</Card.Text>
-                    <h5>Rooms</h5>
+                    <Card.Text className="text-muted">{hotel.description}</Card.Text>
+                    <h5 className="text-primary">Available Rooms</h5>
                     {hotel.rooms?.length > 0 ? (
                       <ListGroup variant="flush">
                         {hotel.rooms.map(room => {
                           const cfg = ROOM_TYPES[room.type] || ROOM_TYPES.Standard;
                           return (
-                            <ListGroupItem
-                              key={room._id}
-                              className="d-flex justify-content-between align-items-center"
-                            >
-                              <div className="d-flex align-items-center">
-                                <img
-                                  src={cfg.image}
-                                  alt={room.type}
-                                  style={{
-                                    width: '100px',
-                                    height: '70px',
-                                    objectFit: 'cover',
-                                    borderRadius: '5px',
-                                    marginRight: '1rem'
-                                  }}
-                                />
-                                <div>
-                                  <strong>Room #{room.roomNumber || room.roomno}</strong>
-                                  <div className="text-muted small">
-                                    {cfg.description}
+                            <ListGroup.Item key={room._id} className="py-3">
+                              <Row className="align-items-center">
+                                <Col xs={4} md={3}>
+                                  <img
+                                    src={cfg.image}
+                                    alt={room.type}
+                                    className="img-fluid rounded"
+                                    style={{
+                                      height: '80px',
+                                      objectFit: 'cover'
+                                    }}
+                                  />
+                                </Col>
+                                <Col xs={8} md={6}>
+                                  <div className="d-flex align-items-center mb-1">
+                                    <h6 className="mb-0 me-2">Room #{room.roomNumber || room.roomno}</h6>
+                                    <Badge bg={cfg.badgeVariant} pill>
+                                      {room.type}
+                                    </Badge>
                                   </div>
-                                  <div className="text-success">
-                                    ${room.price}/night
+                                  <p className="small text-muted mb-1">{cfg.description}</p>
+                                  <p className="text-success fw-bold mb-0">${room.price}/night</p>
+                                </Col>
+                                <Col xs={12} md={3} className="mt-2 mt-md-0">
+                                  <div className="d-flex flex-column gap-2">
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => setSelectedRoom(room)}
+                                      className="w-100"
+                                    >
+                                      Select
+                                    </Button>
+                                    <Button
+                                      variant="outline-success"
+                                      size="sm"
+                                      onClick={() => handleAddFavorite(room)}
+                                      className="w-100"
+                                    >
+                                      <i className="bi bi-heart me-1"></i>Favorite
+                                    </Button>
                                   </div>
-                                </div>
-                              </div>
-                              <div>
-                                <Button
-                                  variant="outline-primary"
-                                  size="sm"
-                                  onClick={() => setSelectedRoom(room)}
-                                >
-                                  Select
-                                </Button>{' '}
-                                <Button
-                                  variant="outline-success"
-                                  size="sm"
-                                  onClick={() => handleAddFavorite(room)}
-                                >
-                                  Favorite
-                                </Button>
-                              </div>
-                            </ListGroupItem>
+                                </Col>
+                              </Row>
+                            </ListGroup.Item>
                           );
                         })}
                       </ListGroup>
                     ) : (
-                      <Alert variant="info">No rooms available</Alert>
+                      <Alert variant="info" className="mb-0">No rooms available</Alert>
                     )}
                   </Card.Body>
                 </Card>
@@ -245,145 +264,188 @@ const BookingForm = () => {
           </Row>
         </>
       ) : (
-        <Card className="p-4 shadow">
-          <h3>Complete Your Booking</h3>
-          <Form onSubmit={handleSubmit}>
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Check-In</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="checkIn"
-                    value={formData.checkIn}
-                    onChange={handleInputChange}
-                    min={today}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Check-Out</Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="checkOut"
-                    value={formData.checkOut}
-                    onChange={handleInputChange}
-                    min={formData.checkIn || today}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Guest Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="guestName"
-                    value={formData.guestName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Guest Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="guestEmail"
-                    value={formData.guestEmail}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Room Selected</Form.Label>
-              <Form.Control
-                plaintext
-                readOnly
-                value={`${selectedRoom.roomNumber || selectedRoom.roomno} — ${
-                  selectedRoom.type
-                } ($${selectedRoom.price}/night)`}
-              />
-            </Form.Group>
-
-            <h5>Additional Services</h5>
-            <Form.Check
-              type="checkbox"
-              label="Breakfast"
-              name="breakfast"
-              checked={formData.additionalServices.breakfast}
-              onChange={handleInputChange}
-            />
-            <Form.Check
-              type="checkbox"
-              label="Airport Transport"
-              name="airportTransport"
-              checked={formData.additionalServices.airportTransport}
-              onChange={handleInputChange}
-            />
-            <Form.Group className="mb-3">
-              <Form.Label>Special Accommodations</Form.Label>
-              <Form.Control
-                type="text"
-                name="specialAccommodations"
-                value={formData.additionalServices.specialAccommodations}
-                onChange={handleInputChange}
-              />
-            </Form.Group>
-
-            <h5>Loyalty Program</h5>
-            <Form.Check
-              type="checkbox"
-              label="I am a loyalty customer"
-              checked={isLoyaltyCustomer}
-              onChange={handleLoyaltyCheckbox}
-            />
-            {isLoyaltyCustomer && (
+        <Card className="shadow">
+          <Card.Header className="bg-primary text-white">
+            <h3 className="mb-0">Complete Your Booking</h3>
+          </Card.Header>
+          <Card.Body>
+            <Form onSubmit={handleSubmit}>
               <Row className="mb-3">
                 <Col md={6}>
-                  <Form.Group>
-                    <Form.Label>Use Points</Form.Label>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Check-In Date</Form.Label>
                     <Form.Control
-                      type="number"
-                      name="loyaltyPoints"
-                      value={formData.loyaltyPoints}
+                      type="date"
+                      name="checkIn"
+                      value={formData.checkIn}
                       onChange={handleInputChange}
-                      min="0"
+                      min={today}
+                      required
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
-                  <Form.Group>
-                    <Form.Label>Coupon Code</Form.Label>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Check-Out Date</Form.Label>
                     <Form.Control
-                      type="text"
-                      name="loyaltyCoupon"
-                      value={formData.loyaltyCoupon}
+                      type="date"
+                      name="checkOut"
+                      value={formData.checkOut}
                       onChange={handleInputChange}
+                      min={formData.checkIn || today}
+                      required
                     />
                   </Form.Group>
                 </Col>
               </Row>
-            )}
 
-            <div className="d-flex justify-content-between mt-4">
-              <Button variant="secondary" onClick={() => setSelectedRoom(null)}>
-                Back to Rooms
-              </Button>
-              <Button variant="primary" type="submit">
-                Complete Booking
-              </Button>
-            </div>
-          </Form>
+              <Row className="mb-3">
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Full Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="guestName"
+                      value={formData.guestName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Email Address</Form.Label>
+                    <Form.Control
+                      type="email"
+                      name="guestEmail"
+                      value={formData.guestEmail}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Card className="mb-4 bg-light">
+                <Card.Body>
+                  <h5 className="text-primary mb-3">Selected Room</h5>
+                  <div className="d-flex align-items-center">
+                    <img
+                      src={ROOM_TYPES[selectedRoom.type]?.image || std_room}
+                      alt={selectedRoom.type}
+                      className="rounded me-3"
+                      style={{ width: '100px', height: '70px', objectFit: 'cover' }}
+                    />
+                    <div>
+                      <h6 className="mb-1">
+                        Room #{selectedRoom.roomNumber || selectedRoom.roomno} - {selectedRoom.type}
+                        <Badge bg={ROOM_TYPES[selectedRoom.type]?.badgeVariant || 'primary'} className="ms-2">
+                          ${selectedRoom.price}/night
+                        </Badge>
+                      </h6>
+                      <p className="small text-muted mb-0">
+                        {ROOM_TYPES[selectedRoom.type]?.description || 'Comfortable accommodation'}
+                      </p>
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+
+              <Card className="mb-4">
+                <Card.Body>
+                  <h5 className="text-primary mb-3">Additional Services</h5>
+                  <Form.Check
+                    type="checkbox"
+                    id="breakfast"
+                    label="Breakfast ($15 per day)"
+                    name="breakfast"
+                    checked={formData.additionalServices.breakfast}
+                    onChange={handleInputChange}
+                    className="mb-2"
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="airportTransport"
+                    label="Airport Transport ($30 one way)"
+                    name="airportTransport"
+                    checked={formData.additionalServices.airportTransport}
+                    onChange={handleInputChange}
+                    className="mb-2"
+                  />
+                  <Form.Group className="mt-3">
+                    <Form.Label>Special Accommodations</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      name="specialAccommodations"
+                      value={formData.additionalServices.specialAccommodations}
+                      onChange={handleInputChange}
+                      rows={2}
+                      placeholder="Any special requests or needs"
+                    />
+                  </Form.Group>
+                </Card.Body>
+              </Card>
+
+              <Card className="mb-4">
+                <Card.Body>
+                  <h5 className="text-primary mb-3">Loyalty Program</h5>
+                  <Form.Check
+                    type="checkbox"
+                    id="loyaltyCustomer"
+                    label="I am a loyalty program member"
+                    checked={isLoyaltyCustomer}
+                    onChange={handleLoyaltyCheckbox}
+                    className="mb-3"
+                  />
+                  {isLoyaltyCustomer && (
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Loyalty Points to Use</Form.Label>
+                          <Form.Control
+                            type="number"
+                            name="loyaltyPoints"
+                            value={formData.loyaltyPoints}
+                            onChange={handleInputChange}
+                            min="0"
+                            placeholder="Enter points to redeem"
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Coupon Code</Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="loyaltyCoupon"
+                            value={formData.loyaltyCoupon}
+                            onChange={handleInputChange}
+                            placeholder="Enter coupon code"
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  )}
+                </Card.Body>
+              </Card>
+
+              <div className="d-flex justify-content-between mt-4">
+                <Button variant="outline-secondary" onClick={() => setSelectedRoom(null)}>
+                  <i className="bi bi-arrow-left me-1"></i>Back to Rooms
+                </Button>
+                <Button variant="primary" type="submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Spinner as="span" size="sm" animation="border" role="status" aria-hidden="true" className="me-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Complete Booking'
+                  )}
+                </Button>
+              </div>
+            </Form>
+          </Card.Body>
         </Card>
       )}
     </Container>

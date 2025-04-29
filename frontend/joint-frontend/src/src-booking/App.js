@@ -1,12 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Navbar, Nav, Container } from 'react-bootstrap';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Navbar, Nav, Container, Spinner } from 'react-bootstrap';
+import { FaHotel, FaUser, FaUsers, FaArrowLeft, FaCalendarAlt } from 'react-icons/fa';
 import BookingForm from './components/BookingForm';
 import BookingList from './components/BookingList';
 import BookingDetails from './components/BookingDetails';
 import GroupBookingForm from './components/GroupBookingForm';
 import { UserAPI } from './api';
-import './index.css';
+import './style.css';
+
+const NavigationHeader = ({ userRole }) => {
+  const location = useLocation();
+  const isBookingDetails = location.pathname.includes('/booking/');
+  const isBookingForm = location.pathname === '/';
+  const isBookingsList = location.pathname === '/bookings';
+  const isGroupBooking = location.pathname === '/group-booking';
+
+  return (
+    <Navbar bg="primary" variant="dark" expand="lg" className="shadow">
+      <Container>
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
+          <FaHotel className="me-2" />
+          <span>Booking Service</span>
+        </Navbar.Brand>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav className="ms-auto">
+            {isBookingDetails && (
+              <Nav.Link as={Link} to={isBookingsList ? '/bookings' : '/'} className="d-flex align-items-center">
+                <FaArrowLeft className="me-1" />
+                Back
+              </Nav.Link>
+            )}
+            {userRole === 'user' && (
+              <>
+                {!isBookingForm && (
+                  <Nav.Link as={Link} to="/" className="d-flex align-items-center">
+                    <FaUser className="me-1" />
+                    New Booking
+                  </Nav.Link>
+                )}
+                {!isBookingsList && (
+                  <Nav.Link as={Link} to="/bookings" className="d-flex align-items-center">
+                    <FaCalendarAlt className="me-1" />
+                    View Bookings
+                  </Nav.Link>
+                )}
+              </>
+            )}
+            {userRole === 'travelAgent' && !isGroupBooking && (
+              <Nav.Link as={Link} to="/group-booking" className="d-flex align-items-center">
+                <FaUsers className="me-1" />
+                Group Booking
+              </Nav.Link>
+            )}
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
+  );
+};
 
 function App() {
   const [userRole, setUserRole] = useState(null);
@@ -16,9 +69,8 @@ function App() {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        // Use UserAPI instead of generic 'api'
         const response = await UserAPI.get('/users/me');
-        setUserRole(response.data.role); // Assuming response contains role directly
+        setUserRole(response.data.role);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch user role');
         if (err.response?.status === 401) {
@@ -32,34 +84,30 @@ function App() {
     fetchUserRole();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="alert alert-danger">{error}</div>;
+  if (error) {
+    return (
+      <div className="container mt-5">
+        <Alert variant="danger" className="text-center">
+          {error}
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <Router>
-      <Navbar bg="dark" variant="dark" expand="lg">
-        <Container>
-          <Navbar.Brand as={Link} to="/">Booking Service</Navbar.Brand>
-          <Navbar.Toggle aria-controls="basic-navbar-nav" />
-          <Navbar.Collapse id="basic-navbar-nav">
-            <Nav className="me-auto">
-            {userRole === 'user' && (
-    <>
-      <Nav.Link as={Link} to="/">New Booking</Nav.Link>
-      <Nav.Link as={Link} to="/bookings">My Bookings</Nav.Link>
-    </>
-  )}
-  
-  {userRole === 'travelAgent' && (
-    <Nav.Link as={Link} to="/group-booking">Group Booking</Nav.Link>
-  )}
-            </Nav>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
-      <Container className="mt-4">
+      <NavigationHeader userRole={userRole} />
+      <Container className="py-4">
         <Routes>
-        {userRole === 'user' && (
+          {userRole === 'user' && (
             <>
               <Route path="/" element={<BookingForm />} />
               <Route path="/bookings" element={<BookingList />} />
@@ -69,10 +117,22 @@ function App() {
           {userRole === 'travelAgent' && (
             <Route path="/group-booking" element={<GroupBookingForm />} />
           )}
-          {/* Fallback redirect for unauthorized roles */}
-          <Route path="*" element={<div>Access Denied</div>} />
+          <Route path="*" element={
+            <div className="text-center py-5">
+              <h3 className="text-muted">Access Denied</h3>
+              <p>You don't have permission to access this page.</p>
+              <Button as={Link} to="/" variant="primary">
+                Go to Home
+              </Button>
+            </div>
+          } />
         </Routes>
       </Container>
+      <footer className="bg-light py-4 mt-5">
+        <Container className="text-center text-muted">
+          <p className="mb-0">© 2023 Hotel Booking System. All rights reserved.</p>
+        </Container>
+      </footer>
     </Router>
   );
 }
