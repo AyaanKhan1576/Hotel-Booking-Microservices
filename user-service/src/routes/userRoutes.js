@@ -10,10 +10,7 @@ router.get('/users', auth, userController.getAllUsers);
 router.put('/users/:id', auth, userController.updateUser);
 router.delete('/users/:id', auth, userController.deleteUser);
 
-// Updated favorites routes
-router.post('/users/:userId/favorites', auth, userController.addFavorite);
-router.delete('/users/:userId/favorites/:itemId', auth, userController.removeFavorite);
-router.get('/users/:userId/favorites', auth, userController.getFavorites);
+
 
 // Loyalty program routes
 router.post('/users/loyalty/enroll', auth, userController.enrollLoyalty);

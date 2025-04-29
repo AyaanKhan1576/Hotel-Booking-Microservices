@@ -1,10 +1,22 @@
+// src/components/BookingForm.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HotelAPI, BookingAPI, UserAPI } from '../api';
-import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, ListGroupItem, Badge } from 'react-bootstrap';
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  ListGroup,
+  ListGroupItem,
+  Badge
+} from 'react-bootstrap';
 import deluxe_room from './imgs/deluxe.jpeg';
-import std_room from './imgs/standard.jpeg';
-import suite_room from './imgs/deluxe.jpeg';
+import std_room    from './imgs/standard.jpeg';
+import suite_room  from './imgs/deluxe.jpeg';
 
 const ROOM_TYPES = {
   Deluxe: {
@@ -26,10 +38,10 @@ const ROOM_TYPES = {
 
 const BookingForm = () => {
   const navigate = useNavigate();
-  const [hotels, setHotels] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [isLoyaltyCustomer, setIsLoyaltyCustomer] = useState(false);
-  const [formData, setFormData] = useState({
+  const [hotels, setHotels]               = useState([]);
+  const [selectedRoom, setSelectedRoom]   = useState(null);
+  const [isLoyaltyCustomer, setLoyalty]   = useState(false);
+  const [formData, setFormData]           = useState({
     checkIn: '',
     checkOut: '',
     guestName: '',
@@ -42,115 +54,110 @@ const BookingForm = () => {
       specialAccommodations: '',
     },
   });
-  const [message, setMessage] = useState({ type: '', content: '' });
+  const [message, setMessage]             = useState({ type: '', content: '' });
 
+  // Load hotels on mount
   useEffect(() => {
-    const fetchHotels = async () => {
-      try {
-        const res = await HotelAPI.get('/hotels');
-        setHotels(res.data);
-      } catch (error) {
-        setMessage({ type: 'danger', content: 'Error loading hotels' });
-      }
-    };
-    fetchHotels();
+    HotelAPI.get('/hotels')
+      .then(res => setHotels(res.data))
+      .catch(() =>
+        setMessage({ type: 'danger', content: 'Error loading hotels' })
+      );
   }, []);
 
-  const handleInputChange = (e) => {
+  // Handle form inputs
+  const handleInputChange = e => {
     const { name, value, type, checked } = e.target;
-    if (['breakfast', 'airportTransport', 'specialAccommodations'].includes(name)) {
-      setFormData((prev) => ({
-        ...prev,
+    if (['breakfast','airportTransport','specialAccommodations'].includes(name)) {
+      setFormData(f => ({
+        ...f,
         additionalServices: {
-          ...prev.additionalServices,
+          ...f.additionalServices,
           [name]: type === 'checkbox' ? checked : value,
         },
       }));
     } else {
-      setFormData((prev) => ({
-        ...prev,
+      setFormData(f => ({
+        ...f,
         [name]: type === 'number' ? Number(value) : value,
       }));
     }
   };
 
-  const handleLoyaltyCheckbox = (e) => {
-    setIsLoyaltyCustomer(e.target.checked);
-    if (!e.target.checked) {
-      setFormData((prev) => ({
-        ...prev,
-        loyaltyPoints: 0,
-        loyaltyCoupon: '',
-      }));
+  // Loyalty toggle
+  const handleLoyaltyCheckbox = e => {
+    const on = e.target.checked;
+    setLoyalty(on);
+    if (!on) {
+      setFormData(f => ({ ...f, loyaltyPoints: 0, loyaltyCoupon: '' }));
     }
   };
 
-  const handleAddFavorite = async (room) => {
+  // Add a room to favorites
+  const handleAddFavorite = async room => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const token  = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      if (!token || !userId) {
         throw new Error('You must be logged in to favorite rooms.');
       }
-      
+
       await UserAPI.post(
-        '/api/users/favorites',
-        { 
-          itemId: room._id,
-          type: 'room'
-        },
+        `/${userId}/favorites`,        // <-- Correct endpoint
+        { itemId: room._id, type: 'room' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setMessage({ type: 'success', content: 'Room added to favorites!' });
-    } catch (error) {
-      setMessage({ type: 'danger', content: error.response?.data?.message || error.message });
+    } catch (err) {
+      setMessage({
+        type: 'danger',
+        content: err.response?.data?.message || err.message
+      });
     }
   };
 
-  const handleSubmit = async (e) => {
+  // Submit booking
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!selectedRoom) {
-      setMessage({ type: 'danger', content: 'Please select a room' });
-      return;
+      return setMessage({ type: 'danger', content: 'Please select a room' });
     }
 
-    const checkInDate = new Date(formData.checkIn);
-    const checkOutDate = new Date(formData.checkOut);
-
-    if (!formData.checkIn || !formData.checkOut) {
-      setMessage({ type: 'danger', content: 'Please select check-in and check-out dates' });
-      return;
+    const { checkIn, checkOut, guestName, guestEmail } = formData;
+    if (!checkIn || !checkOut || !guestName || !guestEmail) {
+      return setMessage({ type: 'danger', content: 'Please fill all fields' });
     }
 
-    if (checkOutDate <= checkInDate) {
-      setMessage({ type: 'danger', content: 'Check-out date must be after check-in date' });
-      return;
+    const inDate  = new Date(checkIn);
+    const outDate = new Date(checkOut);
+    if (outDate <= inDate) {
+      return setMessage({ type: 'danger', content: 'Check-out must be after check-in' });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.guestEmail)) {
-      setMessage({ type: 'danger', content: 'Please enter a valid email address' });
-      return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+      return setMessage({ type: 'danger', content: 'Invalid email address' });
     }
 
-    const bookingData = {
+    const payload = {
       roomId: selectedRoom._id,
-      guestName: formData.guestName,
-      guestEmail: formData.guestEmail,
-      checkIn: checkInDate.toISOString(),
-      checkOut: checkOutDate.toISOString(),
+      guestName,
+      guestEmail,
+      checkIn: inDate.toISOString(),
+      checkOut: outDate.toISOString(),
       additionalServices: formData.additionalServices,
       loyaltyPoints: isLoyaltyCustomer ? formData.loyaltyPoints : 0,
       loyaltyCoupon: isLoyaltyCustomer ? formData.loyaltyCoupon : '',
     };
 
-    console.log('Booking Data:', bookingData);
-
     try {
-      const res = await BookingAPI.post('/bookings', bookingData);
+      const res = await BookingAPI.post('/bookings', payload);
       navigate(`/booking/${res.data.booking._id}`);
-    } catch (error) {
-      setMessage({ type: 'danger', content: error.response?.data?.msg || 'Booking failed' });
+    } catch (err) {
+      setMessage({
+        type: 'danger',
+        content: err.response?.data?.msg || 'Booking failed'
+      });
     }
   };
 
@@ -158,87 +165,72 @@ const BookingForm = () => {
 
   return (
     <Container className="my-5">
-      {/* "My Bookings" Button */}
-      <Button 
-        variant="info" 
-        onClick={() => navigate('/bookings')} 
-        className="mb-4"
-      >
+      <Button variant="info" onClick={() => navigate('/bookings')} className="mb-4">
         My Bookings
       </Button>
-
       {message.content && <Alert variant={message.type}>{message.content}</Alert>}
 
       {!selectedRoom ? (
-        <div>
+        <>
           <h2 className="mb-4">Available Hotels</h2>
           <Row>
-            {hotels.map((hotel) => (
+            {hotels.map(hotel => (
               <Col key={hotel._id} md={6} className="mb-4">
                 <Card className="h-100 shadow">
                   <Card.Body>
                     <Card.Title>{hotel.name}</Card.Title>
-                    <Card.Subtitle className="mb-2 text-muted">{hotel.location}</Card.Subtitle>
+                    <Card.Subtitle className="mb-2 text-muted">
+                      {hotel.location}
+                    </Card.Subtitle>
                     <Card.Text>{hotel.description}</Card.Text>
-
-                    <h5>Available Rooms</h5>
-                    {hotel.rooms && hotel.rooms.length > 0 ? (
+                    <h5>Rooms</h5>
+                    {hotel.rooms?.length > 0 ? (
                       <ListGroup variant="flush">
-                        {hotel.rooms.map((room) => {
-                          const roomTypeConfig = ROOM_TYPES[room.type] || {
-                            image: std_room,
-                            description: 'Standard room',
-                            badgeVariant: 'secondary',
-                          };
-
+                        {hotel.rooms.map(room => {
+                          const cfg = ROOM_TYPES[room.type] || ROOM_TYPES.Standard;
                           return (
                             <ListGroupItem
                               key={room._id}
                               className="d-flex justify-content-between align-items-center"
                             >
                               <div className="d-flex align-items-center">
-                                <div className="position-relative me-3">
-                                  <img
-                                    src={roomTypeConfig.image}
-                                    alt={room.type}
-                                    style={{
-                                      width: '100px',
-                                      height: '70px',
-                                      objectFit: 'cover',
-                                      borderRadius: '5px',
-                                    }}
-                                  />
-                                  <Badge
-                                    pill
-                                    bg={roomTypeConfig.badgeVariant}
-                                    className="position-absolute top-0 start-100 translate-middle"
-                                  >
-                                    {room.type}
-                                  </Badge>
-                                </div>
+                                <img
+                                  src={cfg.image}
+                                  alt={room.type}
+                                  style={{
+                                    width: '100px',
+                                    height: '70px',
+                                    objectFit: 'cover',
+                                    borderRadius: '5px',
+                                    marginRight: '1rem'
+                                  }}
+                                />
                                 <div>
                                   <strong>Room #{room.roomNumber || room.roomno}</strong>
-                                  <div className="text-muted small">{roomTypeConfig.description}</div>
+                                  <div className="text-muted small">
+                                    {cfg.description}
+                                  </div>
                                   <div className="text-success">
-                                    ${room.price} <small>per night</small>
+                                    ${room.price}/night
                                   </div>
                                 </div>
                               </div>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                onClick={() => setSelectedRoom(room)}
-                              >
-                                Select
-                              </Button>
-                              <Button
-                                variant="outline-success"
-                                size="sm"
-                                onClick={() => handleAddFavorite(room)}
-                                style={{ marginLeft: '8px' }}
-                              >
-                                Favorite
-                              </Button>
+                              <div>
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => setSelectedRoom(room)}
+                                >
+                                  Select
+                                </Button>{' '}
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  onClick={() => handleAddFavorite(room)}
+                                >
+                                  Favorite
+                                </Button>
+                              </div>
                             </ListGroupItem>
                           );
                         })}
@@ -251,7 +243,7 @@ const BookingForm = () => {
               </Col>
             ))}
           </Row>
-        </div>
+        </>
       ) : (
         <Card className="p-4 shadow">
           <h3>Complete Your Booking</h3>
@@ -259,7 +251,7 @@ const BookingForm = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Check-In Date</Form.Label>
+                  <Form.Label>Check-In</Form.Label>
                   <Form.Control
                     type="date"
                     name="checkIn"
@@ -272,7 +264,7 @@ const BookingForm = () => {
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Check-Out Date</Form.Label>
+                  <Form.Label>Check-Out</Form.Label>
                   <Form.Control
                     type="date"
                     name="checkOut"
@@ -284,6 +276,7 @@ const BookingForm = () => {
                 </Form.Group>
               </Col>
             </Row>
+
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
@@ -310,63 +303,52 @@ const BookingForm = () => {
                 </Form.Group>
               </Col>
             </Row>
-            <Row className="mb-3">
-              <Col>
-                <Form.Group>
-                  <Form.Label>Room Selected</Form.Label>
-                  <Form.Control
-                    plaintext
-                    readOnly
-                    value={`${selectedRoom.roomNumber || selectedRoom.roomno} - ${selectedRoom.type} ($${selectedRoom.price}/night)`}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Room Selected</Form.Label>
+              <Form.Control
+                plaintext
+                readOnly
+                value={`${selectedRoom.roomNumber || selectedRoom.roomno} — ${
+                  selectedRoom.type
+                } ($${selectedRoom.price}/night)`}
+              />
+            </Form.Group>
 
             <h5>Additional Services</h5>
-            <Row className="mb-3">
-              <Col>
-                <Form.Check
-                  type="checkbox"
-                  label="Breakfast"
-                  name="breakfast"
-                  checked={formData.additionalServices.breakfast}
-                  onChange={handleInputChange}
-                />
-                <Form.Check
-                  type="checkbox"
-                  label="Airport Transport"
-                  name="airportTransport"
-                  checked={formData.additionalServices.airportTransport}
-                  onChange={handleInputChange}
-                />
-              </Col>
-              <Col>
-                <Form.Group>
-                  <Form.Label>Special Accommodations</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="specialAccommodations"
-                    value={formData.additionalServices.specialAccommodations}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Check
+              type="checkbox"
+              label="Breakfast"
+              name="breakfast"
+              checked={formData.additionalServices.breakfast}
+              onChange={handleInputChange}
+            />
+            <Form.Check
+              type="checkbox"
+              label="Airport Transport"
+              name="airportTransport"
+              checked={formData.additionalServices.airportTransport}
+              onChange={handleInputChange}
+            />
+            <Form.Group className="mb-3">
+              <Form.Label>Special Accommodations</Form.Label>
+              <Form.Control
+                type="text"
+                name="specialAccommodations"
+                value={formData.additionalServices.specialAccommodations}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
 
             <h5>Loyalty Program</h5>
-            <Row className="mb-3">
-              <Col>
-                <Form.Check
-                  type="checkbox"
-                  label="I am a loyalty customer"
-                  checked={isLoyaltyCustomer}
-                  onChange={handleLoyaltyCheckbox}
-                />
-              </Col>
-            </Row>
+            <Form.Check
+              type="checkbox"
+              label="I am a loyalty customer"
+              checked={isLoyaltyCustomer}
+              onChange={handleLoyaltyCheckbox}
+            />
             {isLoyaltyCustomer && (
-              <Row className="mb-4">
+              <Row className="mb-3">
                 <Col md={6}>
                   <Form.Group>
                     <Form.Label>Use Points</Form.Label>
@@ -387,7 +369,6 @@ const BookingForm = () => {
                       name="loyaltyCoupon"
                       value={formData.loyaltyCoupon}
                       onChange={handleInputChange}
-                      placeholder="Enter coupon code"
                     />
                   </Form.Group>
                 </Col>
