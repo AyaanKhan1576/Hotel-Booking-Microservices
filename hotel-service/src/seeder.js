@@ -98,7 +98,7 @@ const seedData = async () => {
     }
 
     // Generate available dates for rooms (June 2025)
-    const availableDates = generateDates('2025-06-01', '2025-07-01');
+    const availableDates = generateDates('2025-05-01', '2025-06-01');
 
     const roomTypes = ['Standard', 'Deluxe', 'Suite'];
     const amenitiesOptions = [

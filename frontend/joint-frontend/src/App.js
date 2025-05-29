@@ -18,6 +18,7 @@ import BookingList from './src-booking/components/BookingList';
 import BookingDetails from './src-booking/components/BookingDetails';
 import GroupBookingForm from './src-booking/components/GroupBookingForm';
 
+
 // User Management Components
 import UserList from './src-user/components/users/UserList';
 import UserForm from './src-user/components/users/UserForm';
@@ -59,6 +60,7 @@ function App() {
               <Route path="/booking/:id" element={<BookingDetails />} />
               <Route path="/group-booking" element={<GroupBookingForm />} />
               <Route path="/new-booking" element={<BookingForm />} />
+              <Route path="/rooms" element={<RoomList />} />
             </Route>
 
             {/* Fallback Routes */}

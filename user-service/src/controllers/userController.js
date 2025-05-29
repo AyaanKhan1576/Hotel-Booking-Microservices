@@ -220,9 +220,10 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// Updated addFavorite
 exports.addFavorite = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.params.userId;
     const { itemId, type } = req.body;
 
     if (!['hotel', 'room'].includes(type)) {
@@ -230,6 +231,8 @@ exports.addFavorite = async (req, res) => {
     }
 
     const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
     const exists = user.favorites.some(fav => fav.itemId === itemId && fav.type === type);
     if (exists) return res.status(400).json({ message: 'Item already in favorites' });
 
@@ -241,14 +244,17 @@ exports.addFavorite = async (req, res) => {
   }
 };
 
+// Updated removeFavorite
 exports.removeFavorite = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { itemId, type } = req.body;
+    const { userId, itemId } = req.params;
+    const { type } = req.body;
 
     const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
     const initialLength = user.favorites.length;
-    user.favorites = user.favorites.filter(fav => !(fav.itemId === itemId && fav.type === type));
+    user.favorites = user.favorites.filter(fav => !(fav.itemId.toString() === itemId && fav.type === type));
     
     if (user.favorites.length === initialLength) {
       return res.status(404).json({ message: 'Favorite not found' });
@@ -261,10 +267,13 @@ exports.removeFavorite = async (req, res) => {
   }
 };
 
+// Updated getFavorites
 exports.getFavorites = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.params.userId;
     const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
     res.json(user.favorites);
   } catch (err) {
     res.status(500).json({ error: err.message });

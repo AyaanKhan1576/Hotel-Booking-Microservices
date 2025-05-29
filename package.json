@@ -5,9 +5,6 @@
         "start:backend1": "cd booking-service && npm start",
         "start:backend2": "cd hotel-service && npm start",
         "start:backend3": "cd user-service && npm start",
-        "start:frontend1": "cd frontend\\user-frontend && npm start",
-        "start:frontend2": "cd frontend\\hotel-frontend && npm start",
-        "start:frontend3": "cd frontend\\booking-frontend && npm start",
         "start:frontend": "cd frontend\\joint-frontend && npm start",
         "start": "concurrently \"npm run start:backend1\" \"npm run start:backend2\" \"npm run start:backend3\" \"npm run start:frontend\" "
     },

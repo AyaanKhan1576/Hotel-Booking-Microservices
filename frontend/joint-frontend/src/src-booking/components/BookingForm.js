@@ -93,9 +93,9 @@ const BookingForm = () => {
       }
       
       await UserAPI.post(
-        '/users/favorites',  // Correct endpoint path
+        '/api/users/favorites',
         { 
-          roomId: room._id,  // Use MongoDB _id instead of room number
+          itemId: room._id,
           type: 'room'
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -158,6 +158,15 @@ const BookingForm = () => {
 
   return (
     <Container className="my-5">
+      {/* "My Bookings" Button */}
+      <Button 
+        variant="info" 
+        onClick={() => navigate('/bookings')} 
+        className="mb-4"
+      >
+        My Bookings
+      </Button>
+
       {message.content && <Alert variant={message.type}>{message.content}</Alert>}
 
       {!selectedRoom ? (
@@ -223,13 +232,13 @@ const BookingForm = () => {
                                 Select
                               </Button>
                               <Button
-                variant="outline-success"
-                size="sm"
-                onClick={() => handleAddFavorite(room)}
-                style={{ marginLeft: '8px' }}
-              >
-                Favorite
-              </Button>
+                                variant="outline-success"
+                                size="sm"
+                                onClick={() => handleAddFavorite(room)}
+                                style={{ marginLeft: '8px' }}
+                              >
+                                Favorite
+                              </Button>
                             </ListGroupItem>
                           );
                         })}
@@ -400,4 +409,4 @@ const BookingForm = () => {
   );
 };
 
-export default BookingForm;  
+export default BookingForm;

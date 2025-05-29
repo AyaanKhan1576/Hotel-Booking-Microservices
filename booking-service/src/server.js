@@ -5,9 +5,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cron = require('node-cron');
 const axios = require('axios');
+
 const bookingRoutes      = require('./routes/bookingRoutes');
 const groupBookingRoutes = require('./routes/groupBookingRoutes');
-
+const feedbackRoutes     = require('./routes/feedbackRoutes');
 const app = express();
 
 // Log all incoming requests for debugging
@@ -22,7 +23,7 @@ app.use(express.json());
 // Mount routes
 app.use('/api/bookings',      bookingRoutes);
 app.use('/api/group-bookings', groupBookingRoutes);
-app.use('/api/feedback',       bookingRoutes); // feedback lives on bookingRoutes
+app.use('/api/feedback',       feedbackRoutes);
 
 // Handle 404 for unmatched routes
 app.use((req, res) => {
