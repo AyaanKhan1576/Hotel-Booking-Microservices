@@ -16,7 +16,7 @@ All services communicate via REST APIs and persist to MongoDB. Jest & Supertest 
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 /
@@ -46,7 +46,7 @@ All services communicate via REST APIs and persist to MongoDB. Jest & Supertest 
 
 ---
 
-## 🛠️ Technologies
+## Technologies
 
 - **Backend**: Node.js, Express.js, MongoDB, Mongoose  
 - **Frontend**: React (Create React App)  
@@ -55,7 +55,7 @@ All services communicate via REST APIs and persist to MongoDB. Jest & Supertest 
 
 ---
 
-## ⚙️ Prerequisites
+## Prerequisites
 
 - [Docker & Docker Compose](https://docs.docker.com/)  
 - (Or) Node.js ≥14 & npm/yarn  
@@ -63,7 +63,7 @@ All services communicate via REST APIs and persist to MongoDB. Jest & Supertest 
 
 ---
 
-## 🏃‍♂️ Running Manually (Without Docker)
+## Running Manually (Without Docker)
 
 1. **Start MongoDB locally** on default port.
 2. **In each service folder**:
@@ -87,7 +87,7 @@ All services communicate via REST APIs and persist to MongoDB. Jest & Supertest 
 
 ---
 
-## ✅ Testing
+## Testing
 
 ### Backend
 
@@ -104,7 +104,7 @@ npm test -- --coverage
 
 ---
 
-## 📜 API Endpoints Overview
+## API Endpoints Overview
 
 ### User Service (5001)
 
@@ -136,7 +136,7 @@ npm test -- --coverage
 
 ---
 
-## 📈 Architecture & Design
+## Architecture & Design
 
 - **Microservices**: Each core domain (user, hotel, booking) in its own Node.js service  
 - **Layered**: Controllers → Models (Mongoose)  
